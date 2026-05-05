@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CudaCompile Include="main.cu">
+      <Filter>Implementacion</Filter>
+    </CudaCompile>
+    <CudaCompile Include="info_gpu.cu">
+      <Filter>Implementacion</Filter>
+    </CudaCompile>
+    <CudaCompile Include="fase1_despegues.cu">
+      <Filter>Implementacion</Filter>
+    </CudaCompile>
+    <CudaCompile Include="fase2_aterrizajes.cu">
+      <Filter>Implementacion</Filter>
+    </CudaCompile>
+    <CudaCompile Include="fase3_reduccion.cu">
+      <Filter>Implementacion</Filter>
+    </CudaCompile>
+    <CudaCompile Include="fase4_histograma.cu">
+      <Filter>Implementacion</Filter>
+    </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header">
+      <UniqueIdentifier>{ab4b9f65-0717-42b9-8df7-6f88e323271e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Implementacion">
+      <UniqueIdentifier>{a4076b9d-3eb9-4aff-9d68-abc78bc5b163}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="datos_vuelos.h">
+      <Filter>Header</Filter>
+    </ClInclude>
+    <ClInclude Include="lector_csv.h">
+      <Filter>Header</Filter>
+    </ClInclude>
+    <ClInclude Include="menu.h">
+      <Filter>Header</Filter>
+    </ClInclude>
+    <ClInclude Include="info_gpu.h">
+      <Filter>Header</Filter>
+    </ClInclude>
+    <ClInclude Include="fase1_despegues.h">
+      <Filter>Header</Filter>
+    </ClInclude>
+    <ClInclude Include="fase2_aterrizajes.h">
+      <Filter>Header</Filter>
+    </ClInclude>
+    <ClInclude Include="fase3_reduccion.h">
+      <Filter>Header</Filter>
+    </ClInclude>
+    <ClInclude Include="fase4_histograma.h">
+      <Filter>Header</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="lector_csv.cpp">
+      <Filter>Implementacion</Filter>
+    </ClCompile>
+    <ClCompile Include="menu.cpp">
+      <Filter>Implementacion</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Airline_dataset.csv" />
+  </ItemGroup>
+</Project>
