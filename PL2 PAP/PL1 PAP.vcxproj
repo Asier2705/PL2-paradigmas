@@ -13,6 +13,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{465948FE-E4D6-47DC-B4ED-AD7151F683EC}</ProjectGuid>
     <RootNamespace>PL1_PAP</RootNamespace>
+    <ProjectName>PL2 PAP</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
