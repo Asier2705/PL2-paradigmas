@@ -1,0 +1,17 @@
+﻿################################################################################
+# Este archivo .gitignore ha sido creado automáticamente por Microsoft(R) Visual Studio.
+################################################################################
+
+.vs/
+ipch/
+*.ipch
+*.VC.db
+*.VC.db-shm
+*.VC.db-wal
+*.VC.opendb
+*.suo
+x64/
+Debug/
+Release/
+/PL1 PAP/PL1 PAP.vcxproj.user
+/PL1 PAP/Airline_dataset.csv
