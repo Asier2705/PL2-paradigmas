@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Resultados PL2</title>
+</head>
+<body>
+    <h2>Resultados PL2</h2>
+
+    <table border="1" id="tabla">
+        <thead>
+            <tr>
+                <th>Usuario</th>
+                <th>Fecha</th>
+                <th>Fase</th>
+                <th>Parámetros</th>
+                <th>Resultado</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        fetch('/api/resultados')
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.querySelector('#tabla tbody');
+                tbody.innerHTML = '';
+
+                data.forEach(item => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${item.usuario}</td>
+                            <td>${item.fecha}</td>
+                            <td>${item.fase}</td>
+                            <td>${item.parametros}</td>
+                            <td>${item.resultado}</td>
+                        </tr>
+                    `;
+                });
+            });
+    </script>
+</body>
+</html>

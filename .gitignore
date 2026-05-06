@@ -15,3 +15,5 @@ Debug/
 Release/
 /PL2 PAP/PL2 PAP.vcxproj.user
 /PL2 PAP/Airline_dataset.csv
+node_modules/
+.env
