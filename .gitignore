@@ -13,5 +13,5 @@ ipch/
 x64/
 Debug/
 Release/
-/PL1 PAP/PL1 PAP.vcxproj.user
-/PL1 PAP/Airline_dataset.csv
+/PL2 PAP/PL2 PAP.vcxproj.user
+/PL2 PAP/Airline_dataset.csv
