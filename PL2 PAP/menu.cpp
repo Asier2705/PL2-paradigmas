@@ -10,7 +10,6 @@ int mostrar_menu_principal() {
     std::cout << "2. Fase 2 - Retraso en aterrizajes\n";
     std::cout << "3. Fase 3 - Reduccion\n";
     std::cout << "4. Fase 4 - Histograma\n";
-    std::cout << "5. Subir los datos al Cloud\n"; // opción añadida
     std::cout << "0. Salir\n";
     std::cout << "Seleccione una opcion: ";
     std::cin >> opcion;

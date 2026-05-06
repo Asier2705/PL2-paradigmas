@@ -6,6 +6,7 @@
 
 #include "fase2_aterrizajes.h"
 #include "info_gpu.h"
+#include "cloud_envio.h"
 
 #define TOPE_MATRICULA 16
 
@@ -40,7 +41,7 @@ __global__ void buscar_aterrizajes_gpu(
 
     float minutos = array_llegadas[id_hilo];
 
-    //Saltamos los huecos vacíos del CSV 
+    //Saltamos los huecos vacíos del CSV
     if (isnan(minutos)) {
         return;
     }
@@ -175,14 +176,14 @@ void lanzar_fase2(const DatosVuelos& datos) {
         return;
     }
 
-     //Calculamos el hardware dinámicamente
+    //Calculamos el hardware dinámicamente
     int hilos_bloque = elegir_hilos_por_bloque();
     int bloques_grid = calcular_num_bloques(total, hilos_bloque);
 
     std::cout << "Lanzando kernel con " << bloques_grid << " bloques y " << hilos_bloque << " hilos por bloque.\n";
 
     //Lanzamos el kernel
-    buscar_aterrizajes_gpu<<<bloques_grid, hilos_bloque >>> (
+    buscar_aterrizajes_gpu << <bloques_grid, hilos_bloque >> > (
         d_llegadas,
         d_matriculas,
         total,
@@ -220,7 +221,7 @@ void lanzar_fase2(const DatosVuelos& datos) {
 
         std::cout << "Primeros resultados recuperados en CPU:\n";
 
-        //Imprimos un máximo de 10 para no colapsar la consola
+        //Imprimimos un máximo de 10 para no colapsar la consola
         int mostrar = (total_detectados < 10) ? total_detectados : 10;
 
         for (int i = 0; i < mostrar; i++) {
@@ -228,6 +229,18 @@ void lanzar_fase2(const DatosVuelos& datos) {
                 << &matriculas_salida_host[i * TOPE_MATRICULA]
                 << " -> " << tiempos_salida_host[i] << " min\n";
         }
+    }
+
+    //Preparamos el registro para cloud
+    RegistroCloud registro;
+    registro.fase = "Fase 2";
+    registro.fecha = obtener_fecha_actual();
+    registro.parametros = "umbral=" + std::to_string(limite);
+    registro.resultado = "total_detectados=" + std::to_string(total_detectados);
+
+    if (preguntar_subida_cloud()) {
+        registro.usuario = pedir_usuario_cloud();
+        mostrar_registro_cloud(registro);
     }
 
     //Liberemos la VRAM

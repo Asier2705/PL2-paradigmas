@@ -7,6 +7,8 @@
 #include "fase3_reduccion.h"
 #include "info_gpu.h"
 
+#include "cloud_envio.h"
+
 //Funciones propias para GPU porque std::max y std::min a veces dan problemas en CUDA
 __device__ int saca_max(int a, int b) {
     return (a > b) ? a : b;
@@ -241,9 +243,9 @@ bool test_variante_1_simple(const int* d_datos, int total, bool es_maximo,
     cudaMemcpy(d_res, &inicio, sizeof(int), cudaMemcpyHostToDevice);
 
     if (es_maximo)
-        reduccion_fuerza_bruta_max <<<bloques, hilos >>> (d_datos, total, d_res);
+        reduccion_fuerza_bruta_max << <bloques, hilos >> > (d_datos, total, d_res);
     else
-        reduccion_fuerza_bruta_min <<<bloques, hilos >>> (d_datos, total, d_res);
+        reduccion_fuerza_bruta_min << <bloques, hilos >> > (d_datos, total, d_res);
 
     error = cudaDeviceSynchronize();
     if (error != cudaSuccess) {
@@ -266,9 +268,9 @@ bool test_variante_2_basica(const int* d_datos, int total, bool es_maximo,
     cudaMemcpy(d_res, &inicio, sizeof(int), cudaMemcpyHostToDevice);
 
     if (es_maximo)
-        reduccion_vecinos_max <<<bloques, hilos, memoria_dinamica >>> (d_datos, total, d_res);
+        reduccion_vecinos_max << <bloques, hilos, memoria_dinamica >> > (d_datos, total, d_res);
     else
-        reduccion_vecinos_min <<<bloques, hilos, memoria_dinamica >>> (d_datos, total, d_res);
+        reduccion_vecinos_min << <bloques, hilos, memoria_dinamica >> > (d_datos, total, d_res);
 
     error = cudaDeviceSynchronize();
     if (error != cudaSuccess) {
@@ -291,9 +293,9 @@ bool test_variante_3_intermedia(const int* d_datos, int total, bool es_maximo,
     cudaMemcpy(d_res, &inicio, sizeof(int), cudaMemcpyHostToDevice);
 
     if (es_maximo)
-        reduccion_pares_max <<<bloques, hilos, memoria_dinamica >>> (d_datos, total, d_res);
+        reduccion_pares_max << <bloques, hilos, memoria_dinamica >> > (d_datos, total, d_res);
     else
-        reduccion_pares_min <<<bloques, hilos, memoria_dinamica >>> (d_datos, total, d_res);
+        reduccion_pares_min << <bloques, hilos, memoria_dinamica >> > (d_datos, total, d_res);
 
     error = cudaDeviceSynchronize();
     if (error != cudaSuccess) {
@@ -326,9 +328,9 @@ bool test_variante_4_arbol(const int* d_datos, int total, bool es_maximo,
         }
 
         if (es_maximo)
-            reduccion_arbol_max <<<nuevos_bloques, hilos, memoria_dinamica >>> (puntero_bucle, tope_bucle, buffer_parcial);
+            reduccion_arbol_max << <nuevos_bloques, hilos, memoria_dinamica >> > (puntero_bucle, tope_bucle, buffer_parcial);
         else
-            reduccion_arbol_min <<<nuevos_bloques, hilos, memoria_dinamica >>> (puntero_bucle, tope_bucle, buffer_parcial);
+            reduccion_arbol_min << <nuevos_bloques, hilos, memoria_dinamica >> > (puntero_bucle, tope_bucle, buffer_parcial);
 
         error = cudaDeviceSynchronize();
         if (error != cudaSuccess) {
@@ -473,5 +475,22 @@ void lanzar_fase3(const DatosVuelos& datos) {
     if (paso_3) std::cout << "3.3 Intermedia -> " << final_3 << "\n"; else std::cout << "3.3 Intermedia -> PETO\n";
     if (paso_4) std::cout << "3.4 Reduccion -> " << final_4 << "\n"; else std::cout << "3.4 Reduccion -> PETO\n";
 
+
     cudaFree(d_datos_gpu);
+
+    //Cloud
+    RegistroCloud registro;
+    registro.fase = "Fase 3";
+    registro.fecha = obtener_fecha_actual();
+    registro.parametros = std::string("columna=") + etiqueta_columna +
+        ",operacion = " + (es_maximo ? "MAX" : "MIN");
+    registro.resultado = "v1=" + std::to_string(final_1) +
+        ",v2=" + std::to_string(final_2) +
+        ",v3=" + std::to_string(final_3) +
+        ",v4=" + std::to_string(final_4);
+
+    if (preguntar_subida_cloud()) {
+        registro.usuario = pedir_usuario_cloud();
+        mostrar_registro_cloud(registro);
+    }
 }

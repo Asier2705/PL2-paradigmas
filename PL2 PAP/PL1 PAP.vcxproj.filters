@@ -53,6 +53,9 @@
     <ClInclude Include="fase4_histograma.h">
       <Filter>Header</Filter>
     </ClInclude>
+    <ClInclude Include="cloud_envio.h">
+      <Filter>Header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="lector_csv.cpp">
@@ -61,8 +64,13 @@
     <ClCompile Include="menu.cpp">
       <Filter>Implementacion</Filter>
     </ClCompile>
+    <ClCompile Include="cloud_envio.cpp">
+      <Filter>Implementacion</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Airline_dataset.csv" />
+    <None Include="..\..\PL1-paradigmas\PL1 PAP\Airline_dataset.csv">
+      <Filter>Implementacion</Filter>
+    </None>
   </ItemGroup>
 </Project>

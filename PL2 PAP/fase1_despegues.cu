@@ -4,6 +4,7 @@
 
 #include "fase1_despegues.h"
 #include "info_gpu.h"
+#include "cloud_envio.h"
 
 //Este es el kernel principal. Cada hilo coge un vuelo y comprueba si se pasa del límite
 __global__ void filtrar_despegues_gpu(const float* array_retrasos, int total_vuelos, int limite_minutos) {
@@ -25,8 +26,8 @@ __global__ void filtrar_despegues_gpu(const float* array_retrasos, int total_vue
 
     //Comprobamos la lógica:
     //Si buscamos retrasos (positivo): que el vuelo tarde igual o más que el límite
-    //Si buscamos adelantos (negativo): que llegue incluso antes (menor o igual)
-    if ((limite_minutos >= 0 && minutos >= limite_minutos) || 
+    //Si buscamos adelantos (negativo): que salga incluso antes (menor o igual)
+    if ((limite_minutos >= 0 && minutos >= limite_minutos) ||
         (limite_minutos < 0 && minutos <= limite_minutos)) {
 
         //Imprimimos directo desde la gráfica
@@ -47,6 +48,21 @@ void lanzar_fase1(const DatosVuelos& datos) {
 
     int total = static_cast<int>(datos.retraso_salida.size());
     std::size_t tamano_bytes = total * sizeof(float);
+
+    //Contamos en CPU cuántos vuelos cumplen la condición para poder resumir la fase en el cloud
+    int coincidencias = 0;
+    for (int i = 0; i < total; i++) {
+        float minutos = datos.retraso_salida[i];
+
+        if (std::isnan(minutos)) {
+            continue;
+        }
+
+        if ((limite >= 0 && minutos >= limite) ||
+            (limite < 0 && minutos <= limite)) {
+            coincidencias++;
+        }
+    }
 
     float* d_retrasos = nullptr;
 
@@ -73,16 +89,36 @@ void lanzar_fase1(const DatosVuelos& datos) {
         << hilos_bloque << " hilos por bloque.\n";
 
     //Disparamos el kernel
-    filtrar_despegues_gpu<<<bloques_grid, hilos_bloque>>>(d_retrasos, total, limite);
+    filtrar_despegues_gpu << <bloques_grid, hilos_bloque >> > (d_retrasos, total, limite);
 
     //Esperamos a que la GPU termine de imprimir todo
     error = cudaDeviceSynchronize();
     if (error != cudaSuccess) {
         std::cout << "Error en la ejecucion del kernel: " << cudaGetErrorString(error) << "\n";
-    } else {
+    }
+    else {
         std::cout << "Fase 1 completada con exito.\n";
+        std::cout << "Total de coincidencias encontradas: " << coincidencias << "\n";
+    }
+
+    //Preparamos el registro para cloud
+    RegistroCloud registro;
+    registro.fase = "Fase 1";
+    registro.fecha = obtener_fecha_actual();
+    registro.parametros = "umbral=" + std::to_string(limite);
+    registro.resultado = "coincidencias=" + std::to_string(coincidencias);
+
+    if (preguntar_subida_cloud()) {
+        registro.usuario = pedir_usuario_cloud();
+        mostrar_registro_cloud(registro);
     }
 
     //Limpiamos la memoria para que no haya fugas
     cudaFree(d_retrasos);
 }
+
+
+
+
+
+

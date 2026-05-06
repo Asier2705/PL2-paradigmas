@@ -86,6 +86,7 @@
     <CudaCompile Include="main.cu" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="cloud_envio.h" />
     <ClInclude Include="datos_vuelos.h" />
     <ClInclude Include="fase1_despegues.h" />
     <ClInclude Include="fase2_aterrizajes.h" />
@@ -96,11 +97,12 @@
     <ClInclude Include="menu.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="cloud_envio.cpp" />
     <ClCompile Include="lector_csv.cpp" />
     <ClCompile Include="menu.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Airline_dataset.csv" />
+    <None Include="..\..\PL1-paradigmas\PL1 PAP\Airline_dataset.csv" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

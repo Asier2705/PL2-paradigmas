@@ -1,6 +1,5 @@
 #include <iostream>
 #include <string>
-#include <ctime> // Necesario para obtener la fecha y la hora
 
 #include "datos_vuelos.h"
 #include "lector_csv.h"
@@ -17,7 +16,7 @@ int main() {
     std::string ruta_csv = "Airline_dataset.csv";
 
     std::cout << "=========================================\n";
-    std::cout << "   PL1 - Manipulacion de Datos con CUDA\n";
+    std::cout << "   PL2 - Manipulacion de Datos con CUDA\n";
     std::cout << "=========================================\n\n";
 
     //Carga inicial del dataset en la memoria del procesador
@@ -62,51 +61,6 @@ int main() {
         case 4:
             lanzar_fase4(datos);
             break;
-        case 5: { // Usamos llaves para limitar el alcance de las variables locales
-            int fase_cloud;
-            std::cout << "\n¿Que fase deseas ejecutar y subir al Cloud? (1-4): ";
-            std::cin >> fase_cloud; // Cumplimos el requisito de solicitar la fase a ejecutar[cite: 1]
-
-            // Ejecutamos la fase correspondiente elegida por el usuario
-            if (fase_cloud == 1) lanzar_fase1(datos);
-            else if (fase_cloud == 2) lanzar_fase2(datos);
-            else if (fase_cloud == 3) lanzar_fase3(datos);
-            else if (fase_cloud == 4) lanzar_fase4(datos);
-            else {
-                std::cout << "Fase no valida. Cancelando la conexion al Cloud.\n";
-                break;
-            }
-
-            // Recopilamos el nombre de usuario
-            std::string usuario_cloud;
-            std::cout << "\nIntroduce un nombre de usuario para el registro (alfanumerico): ";
-            std::cin >> usuario_cloud;
-
-            // Recopilamos la fecha y la hora actual
-            std::time_t t = std::time(nullptr);
-            char buffer[100];
-            std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", std::localtime(&t));
-            std::string fecha_hora(buffer);
-
-            // Print de comprobación temporal para ver que recopilamos los datos correctamente
-            std::cout << "\n[DEBUG] Datos listos para el paquete Cloud:\n";
-            std::cout << "-> Usuario: " << usuario_cloud << "\n";
-            std::cout << "-> Fecha: " << fecha_hora << "\n";
-            std::cout << "-> Fase ejecutada: Fase " << fase_cloud << "\n";
-
-            // Empaquetar resultados en JSON y hacer la petición HTTP
-            // Construimos el JSON manualmente escapando las comillas con \"
-            std::string json_payload = "{";
-            json_payload += "\"usuario\": \"" + usuario_cloud + "\", ";
-            json_payload += "\"fecha\": \"" + fecha_hora + "\", ";
-            json_payload += "\"fase\": " + std::to_string(fase_cloud) + ", ";
-            json_payload += "\"resultados\": \"Datos de prueba generados por la fase\""; // TODO: Conectar con resultado real
-            json_payload += "}";
-
-            std::cout << "\n[DEBUG] JSON generado: \n" << json_payload << "\n";
-
-            break;
-        }
         case 0:
             std::cout << "Saliendo del programa...\n";
             break;
@@ -120,3 +74,5 @@ int main() {
 
     return 0;
 }
+
+

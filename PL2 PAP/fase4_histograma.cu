@@ -9,6 +9,8 @@
 #include "fase4_histograma.h"
 #include "info_gpu.h"
 
+#include "cloud_envio.h"
+
 //Estructura auxiliar para agrupar y ordenar los resultados finales
 struct ResultadoHistograma {
     int indice;
@@ -218,7 +220,7 @@ void lanzar_fase4(const DatosVuelos& datos) {
     //Bifurcacion dinamica del flujo de ejecucion segun las limitaciones fisicas del hardware
     if (capacidad_suficiente) {
         std::cout << "Modo operativo: Memoria compartida activada\n";
-        calcular_histograma_compartido <<<bloques_grid, hilos_bloque, memoria_dinamica_requerida >>> (
+        calcular_histograma_compartido << <bloques_grid, hilos_bloque, memoria_dinamica_requerida >> > (
             d_array_categorias,
             total_registros,
             d_array_histograma,
@@ -227,7 +229,7 @@ void lanzar_fase4(const DatosVuelos& datos) {
     }
     else {
         std::cout << "Modo operativo: Memoria global (limite de shared cache excedido)\n";
-        calcular_histograma_global <<<bloques_grid, hilos_bloque >>> (
+        calcular_histograma_global << <bloques_grid, hilos_bloque >> > (
             d_array_categorias,
             total_registros,
             d_array_histograma
@@ -302,6 +304,20 @@ void lanzar_fase4(const DatosVuelos& datos) {
                 << std::string(representacion_barras, '#')
                 << " (" << elemento.ocurrencias << ")\n";
         }
+    }
+
+    //Preparamos el registro para cloud
+    RegistroCloud registro;
+    registro.fase = "Fase 4";
+    registro.fecha = obtener_fecha_actual();
+    registro.parametros = std::string("tipo=") + etiqueta_tipo +
+        ",umbral=" + std::to_string(umbral_minimo);
+    registro.resultado = "categorias=" + std::to_string(total_categorias) +
+        ",mostrados=" + std::to_string(coleccion_filtrada.size());
+
+    if (preguntar_subida_cloud()) {
+        registro.usuario = pedir_usuario_cloud();
+        mostrar_registro_cloud(registro);
     }
 
     //Liberacion segura de las reservas en la VRAM
