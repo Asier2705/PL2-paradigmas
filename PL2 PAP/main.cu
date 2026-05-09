@@ -14,8 +14,8 @@
 int main() {
     DatosVuelos datos;
     int opcion = -1;
-    std::string ruta_csv = "C:\\Users\\UAH\\Source\\Repos\\PL2-paradigmas\\PL2 PAP\\Airline_dataset.csv";
-
+    std::string ruta_csv = "Airline_dataset.csv"; //funciona copiando el csv en la carpeta PL2 PAP y en x64 -> debug
+    //std::string ruta_csv = "C:\\Users\\UAH\\Source\\Repos\\PL2-paradigmas\\PL2 PAP\\Airline_dataset.csv";
 
     std::cout << "=========================================\n";
     std::cout << "   PL2 - Manipulacion de Datos con CUDA\n";
