@@ -2,43 +2,86 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Resultados PL2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Vuelos PL2</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h2>Resultados PL2</h2>
+    <div class="dashboard-container">
+        <div class="header">
+            <h2>🛫 Panel de Control PL2</h2>
+            <input type="text" id="buscador" class="search-box" placeholder="Buscar usuario, fase, resultado...">
+        </div>
 
-    <table border="1" id="tabla">
-        <thead>
-            <tr>
-                <th>Usuario</th>
-                <th>Fecha</th>
-                <th>Fase</th>
-                <th>Parámetros</th>
-                <th>Resultado</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+        <table id="tabla">
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Fecha de Ejecución</th>
+                    <th>Fase</th>
+                    <th>Parámetros</th>
+                    <th>Resultado</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
 
     <script>
+        let datosGlobales = [];
+
+        function obtenerClaseFase(faseTexto) {
+            if(faseTexto.includes("1")) return "fase-1";
+            if(faseTexto.includes("2")) return "fase-2";
+            if(faseTexto.includes("3")) return "fase-3";
+            if(faseTexto.includes("4")) return "fase-4";
+            return "fase-default";
+        }
+
+        function dibujarTabla(datos) {
+            const tbody = document.querySelector('#tabla tbody');
+            tbody.innerHTML = '';
+
+            if (datos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No se encontraron resultados</td></tr>';
+                return;
+            }
+
+            datos.forEach(item => {
+                const claseFase = obtenerClaseFase(item.fase);
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${item.usuario}</strong></td>
+                        <td style="color: #718096; font-size: 14px;">${item.fecha}</td>
+                        <td><span class="badge ${claseFase}">${item.fase}</span></td>
+                        <td><code>${item.parametros}</code></td>
+                        <td style="font-weight: 600;">${item.resultado}</td>
+                    </tr>
+                `;
+            });
+        }
+
         fetch('/api/resultados')
             .then(res => res.json())
             .then(data => {
-                const tbody = document.querySelector('#tabla tbody');
-                tbody.innerHTML = '';
-
-                data.forEach(item => {
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${item.usuario}</td>
-                            <td>${item.fecha}</td>
-                            <td>${item.fase}</td>
-                            <td>${item.parametros}</td>
-                            <td>${item.resultado}</td>
-                        </tr>
-                    `;
-                });
+                datosGlobales = data;
+                dibujarTabla(datosGlobales);
             });
+
+        // Lógica del buscador en tiempo real 
+        document.getElementById('buscador').addEventListener('input', function(e) {
+            const textoBusqueda = e.target.value.toLowerCase();
+            
+            const datosFiltrados = datosGlobales.filter(item => {
+                return item.usuario.toLowerCase().includes(textoBusqueda) || 
+                       item.fase.toLowerCase().includes(textoBusqueda) ||
+                       item.resultado.toLowerCase().includes(textoBusqueda) ||
+                       item.fecha.toLowerCase().includes(textoBusqueda); // ¡Ahora busca por fecha!
+            });
+            
+            dibujarTabla(datosFiltrados);
+        });
     </script>
 </body>
 </html>

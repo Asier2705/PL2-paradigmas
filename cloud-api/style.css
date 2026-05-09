@@ -1,0 +1,171 @@
+/* ================= style.css ================= */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+    color: #2d3748;
+    margin: 0;
+    padding: 40px 20px;
+    min-height: 100vh;
+}
+
+.dashboard-container {
+    max-width: 1050px;
+    margin: 0 auto;
+    /* Efecto Glassmorphism (Cristal) */
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    animation: fadeIn 0.8s ease-out; /* Animación de entrada */
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid rgba(0,0,0,0.05);
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+.header h2 {
+    margin: 0;
+    color: #1a202c;
+    font-size: 28px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.search-box {
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: 1px solid #cbd5e0;
+    width: 300px;
+    font-size: 15px;
+    transition: all 0.3s ease;
+    background-color: rgba(255, 255, 255, 0.9);
+}
+
+.search-box:focus {
+    outline: none;
+    border-color: #3182ce;
+    box-shadow: 0 0 0 4px rgba(49, 130, 206, 0.15);
+    width: 320px; /* Se expande un poco al hacer clic */
+}
+
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px; /* Espacio entre filas */
+}
+
+th, td {
+    padding: 16px;
+    text-align: left;
+}
+
+th {
+    color: #718096;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+    border-bottom: none;
+}
+
+/* Filas como tarjetas independientes */
+tbody tr {
+    background-color: #ffffff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    animation: fadeInRow 0.5s ease-out forwards;
+    opacity: 0;
+}
+
+/* Animación en cascada para las filas */
+tbody tr:nth-child(1) { animation-delay: 0.1s; }
+tbody tr:nth-child(2) { animation-delay: 0.2s; }
+tbody tr:nth-child(3) { animation-delay: 0.3s; }
+tbody tr:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes fadeInRow {
+    to { opacity: 1; transform: translateX(0); }
+}
+
+tbody tr:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+
+tbody td:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+tbody td:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+
+.badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+}
+
+.fase-1 { background-color: #e0f2fe; color: #0284c7; }
+.fase-2 { background-color: #dcfce7; color: #16a34a; }
+.fase-3 { background-color: #ffedd5; color: #ea580c; }
+.fase-4 { background-color: #fee2e2; color: #dc2626; }
+.fase-default { background-color: #f1f5f9; color: #475569; }
+
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #a0aec0;
+    font-style: italic;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+/* --- MEJORAS PREMIUM --- */
+
+/* Efecto linterna/brillo al pasar el ratón por una fila */
+tbody tr {
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    border-left: 4px solid transparent; /* Borde invisible preparado */
+}
+
+tbody tr:hover {
+    transform: translateY(-3px) scale(1.01);
+    box-shadow: 0 10px 25px rgba(49, 130, 206, 0.15); /* Sombra azulada */
+    border-left: 4px solid #3182ce; /* Aparece una barra lateral azul */
+    background-color: #f8fafc;
+}
+
+/* Mejora del buscador para que parezca de Apple/Microsoft */
+.search-box {
+    padding: 12px 20px 12px 40px; /* Espacio para un emoji de lupa */
+    border-radius: 50px; /* Bordes totalmente redondos */
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%23a0aec0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
+    background-position: 15px center;
+    background-repeat: no-repeat;
+    background-color: #f7fafc;
+    border: 2px solid transparent;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+}
+
+.search-box:focus {
+    background-color: #ffffff;
+    border: 2px solid #3182ce;
+    box-shadow: 0 0 15px rgba(49, 130, 206, 0.2);
+    width: 350px;
+}

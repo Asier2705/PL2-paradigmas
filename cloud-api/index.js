@@ -4,6 +4,7 @@ const path = require('node:path');
 
 const app = express();
 app.use(express.json());
+app.use(express.static(__dirname)); //añadido
 
 let resultados = [];
 
