@@ -483,16 +483,29 @@ void lanzar_fase3(const DatosVuelos& datos) {
     registro.fase = "Fase 3";
     registro.fecha = obtener_fecha_actual();
     registro.parametros = std::string("columna=") + etiqueta_columna +
-        ",operacion = " + (es_maximo ? "MAX" : "MIN");
-    registro.resultado = "v1=" + std::to_string(final_1) +
-        ",v2=" + std::to_string(final_2) +
-        ",v3=" + std::to_string(final_3) +
-        ",v4=" + std::to_string(final_4);
+        ",operacion=" + (es_maximo ? "MAX" : "MIN");
+
+    std::string r1 = paso_1 ? std::to_string(final_1) : "PETO";
+    std::string r2 = paso_2 ? std::to_string(final_2) : "PETO";
+    std::string r3 = paso_3 ? std::to_string(final_3) : "PETO";
+    std::string r4 = paso_4 ? std::to_string(final_4) : "PETO";
+
+    registro.resultado = "v1=" + r1 +
+        ",v2=" + r2 +
+        ",v3=" + r3 +
+        ",v4=" + r4;
 
     if (preguntar_subida_cloud()) {
         registro.usuario = pedir_usuario_cloud();
-        mostrar_registro_cloud(registro);
-        //añadido
-        enviar_registro_cloud(registro);
+
+        bool enviado_ok = enviar_registro_cloud(registro);
+
+        if (enviado_ok) {
+            std::cout << "\nResultado enviado correctamente al cloud.\n";
+        }
+        else {
+            std::cout << "\nNo se pudo enviar al cloud. Se muestra el registro localmente:\n";
+            mostrar_registro_cloud(registro);
+        }
     }
 }

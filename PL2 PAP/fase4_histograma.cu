@@ -8,7 +8,6 @@
 
 #include "fase4_histograma.h"
 #include "info_gpu.h"
-
 #include "cloud_envio.h"
 
 //Estructura auxiliar para agrupar y ordenar los resultados finales
@@ -306,6 +305,10 @@ void lanzar_fase4(const DatosVuelos& datos) {
         }
     }
 
+    //Liberacion segura de las reservas en la VRAM
+    cudaFree(d_array_categorias);
+    cudaFree(d_array_histograma);
+
     //Preparamos el registro para cloud
     RegistroCloud registro;
     registro.fase = "Fase 4";
@@ -317,12 +320,15 @@ void lanzar_fase4(const DatosVuelos& datos) {
 
     if (preguntar_subida_cloud()) {
         registro.usuario = pedir_usuario_cloud();
-        mostrar_registro_cloud(registro);
-        //añadido
-        enviar_registro_cloud(registro);
-    }
 
-    //Liberacion segura de las reservas en la VRAM
-    cudaFree(d_array_categorias);
-    cudaFree(d_array_histograma);
+        bool enviado_ok = enviar_registro_cloud(registro);
+
+        if (enviado_ok) {
+            std::cout << "\nResultado enviado correctamente al cloud.\n";
+        }
+        else {
+            std::cout << "\nNo se pudo enviar al cloud. Se muestra el registro localmente:\n";
+            mostrar_registro_cloud(registro);
+        }
+    }
 }

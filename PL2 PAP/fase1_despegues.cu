@@ -101,6 +101,10 @@ void lanzar_fase1(const DatosVuelos& datos) {
         std::cout << "Total de coincidencias encontradas: " << coincidencias << "\n";
     }
 
+
+    //Limpiamos la memoria para que no haya fugas
+    cudaFree(d_retrasos);
+
     //Preparamos el registro para cloud
     RegistroCloud registro;
     registro.fase = "Fase 1";
@@ -110,15 +114,21 @@ void lanzar_fase1(const DatosVuelos& datos) {
 
     if (preguntar_subida_cloud()) {
         registro.usuario = pedir_usuario_cloud();
-        mostrar_registro_cloud(registro);
-        //añadido
-        // Llama a la función que creamos en cloud_envio.cpp
-        enviar_registro_cloud(registro);
-    }
 
-    //Limpiamos la memoria para que no haya fugas
-    cudaFree(d_retrasos);
+        bool enviado_ok = enviar_registro_cloud(registro);
+
+        if (enviado_ok) {
+            std::cout << "\nResultado enviado correctamente al cloud.\n";
+        }
+        else {
+            std::cout << "\nNo se pudo enviar al cloud. Se muestra el registro localmente:\n";
+            mostrar_registro_cloud(registro);
+        }
+    }
 }
+
+
+
 
 
 
