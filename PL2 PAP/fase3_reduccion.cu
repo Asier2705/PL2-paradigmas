@@ -492,5 +492,7 @@ void lanzar_fase3(const DatosVuelos& datos) {
     if (preguntar_subida_cloud()) {
         registro.usuario = pedir_usuario_cloud();
         mostrar_registro_cloud(registro);
+        //añadido
+        enviar_registro_cloud(registro);
     }
 }

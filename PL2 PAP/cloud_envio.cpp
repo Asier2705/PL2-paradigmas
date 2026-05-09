@@ -4,6 +4,7 @@
 #include <ctime>
 #include <iomanip>
 #include <sstream>
+#include <fstream> // añadido para poder crear archivos
 
 std::string obtener_fecha_actual() {
     auto ahora = std::chrono::system_clock::now();
@@ -42,4 +43,30 @@ void mostrar_registro_cloud(const RegistroCloud& registro) {
     std::cout << "Fase: " << registro.fase << "\n";
     std::cout << "Parametros: " << registro.parametros << "\n";
     std::cout << "Resultado: " << registro.resultado << "\n";
+}
+
+void enviar_registro_cloud(const RegistroCloud& registro) {
+    // 1. Creamos un archivo temporal con formato JSON
+    std::ofstream archivo_json("payload.json");
+    archivo_json << "{\n";
+    archivo_json << "  \"usuario\": \"" << registro.usuario << "\",\n";
+    archivo_json << "  \"fecha\": \"" << registro.fecha << "\",\n";
+    archivo_json << "  \"fase\": \"" << registro.fase << "\",\n";
+    archivo_json << "  \"parametros\": \"" << registro.parametros << "\",\n";
+    archivo_json << "  \"resultado\": \"" << registro.resultado << "\"\n";
+    archivo_json << "}";
+    archivo_json.close();
+
+    std::cout << "\n[Conectando con el servidor en localhost:3000...]\n";
+
+    // 2. Usamos el comando curl de Windows para enviar el archivo al Visual Azul
+    // Cambiaremos localhost por la URL de Azure cuando llegue el momento
+    int resultado_red = system("curl -s -X POST http://localhost:3000/api/resultados -H \"Content-Type: application/json\" -d @payload.json");
+
+    if (resultado_red == 0) {
+        std::cout << "\n¡Exito! Los datos han volado a tu base de datos.\n";
+    }
+    else {
+        std::cout << "\n[ERROR] El servidor Azul no responde. Comprueba que 'node index.js' esta encendido.\n";
+    }
 }

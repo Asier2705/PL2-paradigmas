@@ -111,6 +111,9 @@ void lanzar_fase1(const DatosVuelos& datos) {
     if (preguntar_subida_cloud()) {
         registro.usuario = pedir_usuario_cloud();
         mostrar_registro_cloud(registro);
+        //añadido
+        // Llama a la función que creamos en cloud_envio.cpp
+        enviar_registro_cloud(registro);
     }
 
     //Limpiamos la memoria para que no haya fugas
