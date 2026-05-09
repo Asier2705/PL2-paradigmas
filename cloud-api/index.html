@@ -2,43 +2,175 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Resultados PL2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Vuelos PL2</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7fa;
+            color: #2d3748;
+            margin: 0;
+            padding: 40px 20px;
+        }
+        .dashboard-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            padding: 40px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #edf2f7;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h2 {
+            margin: 0;
+            color: #1a202c;
+            font-size: 28px;
+            font-weight: 800;
+        }
+        .search-box {
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e0;
+            width: 300px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+        }
+        .search-box:focus {
+            outline: none;
+            border-color: #3182ce;
+            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.2);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid #edf2f7;
+        }
+        th {
+            color: #718096;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        tr {
+            transition: background-color 0.2s ease;
+        }
+        tr:hover {
+            background-color: #ebf8ff;
+        }
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        /* Colores dinámicos para las fases */
+        .fase-1 { background-color: #bee3f8; color: #2b6cb0; }
+        .fase-2 { background-color: #c6f6d5; color: #2f855a; }
+        .fase-3 { background-color: #feebc8; color: #c05621; }
+        .fase-4 { background-color: #fed7d7; color: #c53030; }
+        .fase-default { background-color: #e2e8f0; color: #4a5568; }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #a0aec0;
+            font-style: italic;
+        }
+    </style>
 </head>
 <body>
-    <h2>Resultados PL2</h2>
+    <div class="dashboard-container">
+        <div class="header">
+            <h2>☁️ Panel de Control PL2</h2>
+            <input type="text" id="buscador" class="search-box" placeholder="Buscar usuario, fase, resultado...">
+        </div>
 
-    <table border="1" id="tabla">
-        <thead>
-            <tr>
-                <th>Usuario</th>
-                <th>Fecha</th>
-                <th>Fase</th>
-                <th>Parámetros</th>
-                <th>Resultado</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+        <table id="tabla">
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Fecha de Ejecución</th>
+                    <th>Fase</th>
+                    <th>Parámetros</th>
+                    <th>Resultado</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
 
     <script>
+        let datosGlobales = []; // Guardamos los datos para poder filtrarlos sin pedir a la API otra vez
+
+        // Función para darle color a la fase
+        function obtenerClaseFase(faseTexto) {
+            if(faseTexto.includes("1")) return "fase-1";
+            if(faseTexto.includes("2")) return "fase-2";
+            if(faseTexto.includes("3")) return "fase-3";
+            if(faseTexto.includes("4")) return "fase-4";
+            return "fase-default";
+        }
+
+        // Función que dibuja la tabla
+        function dibujarTabla(datos) {
+            const tbody = document.querySelector('#tabla tbody');
+            tbody.innerHTML = '';
+
+            if (datos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No se encontraron resultados</td></tr>';
+                return;
+            }
+
+            datos.forEach(item => {
+                const claseFase = obtenerClaseFase(item.fase);
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${item.usuario}</strong></td>
+                        <td style="color: #718096;">${item.fecha}</td>
+                        <td><span class="badge ${claseFase}">${item.fase}</span></td>
+                        <td><code>${item.parametros}</code></td>
+                        <td>${item.resultado}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Cargar datos iniciales
         fetch('/api/resultados')
             .then(res => res.json())
             .then(data => {
-                const tbody = document.querySelector('#tabla tbody');
-                tbody.innerHTML = '';
-
-                data.forEach(item => {
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${item.usuario}</td>
-                            <td>${item.fecha}</td>
-                            <td>${item.fase}</td>
-                            <td>${item.parametros}</td>
-                            <td>${item.resultado}</td>
-                        </tr>
-                    `;
-                });
+                datosGlobales = data;
+                dibujarTabla(datosGlobales);
             });
+
+        // Lógica del buscador en tiempo real
+        document.getElementById('buscador').addEventListener('input', function(e) {
+            const textoBusqueda = e.target.value.toLowerCase();
+            
+            const datosFiltrados = datosGlobales.filter(item => {
+                return item.usuario.toLowerCase().includes(textoBusqueda) || 
+                       item.fase.toLowerCase().includes(textoBusqueda) ||
+                       item.resultado.toLowerCase().includes(textoBusqueda);
+            });
+            
+            dibujarTabla(datosFiltrados);
+        });
     </script>
 </body>
 </html>
