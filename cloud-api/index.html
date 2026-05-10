@@ -8,80 +8,213 @@
 </head>
 <body>
     <div class="dashboard-container">
-        <div class="header">
-            <h2>🛫 Panel de Control PL2</h2>
-            <input type="text" id="buscador" class="search-box" placeholder="Buscar usuario, fecha, fase, resultado...">
+        <header class="hero">
+            <div class="hero-text">
+                <p class="eyebrow">Computación en la nube · PL2</p>
+                <h1>🛫 Panel de Control de Resultados</h1>
+                <p class="hero-subtitle">
+                    Visualización de ejecuciones enviadas desde CUDA al entorno cloud.
+                </p>
+            </div>
+
+            <div class="hero-stats">
+                <div class="stat-card">
+                    <span class="stat-label">Registros visibles</span>
+                    <span class="stat-value" id="contador-registros">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Última actualización</span>
+                    <span class="stat-value stat-date" id="ultima-actualizacion">—</span>
+                </div>
+            </div>
+        </header>
+
+        <section class="controls">
+            <div class="search-group">
+                <input type="text"
+                       id="buscador"
+                       class="search-box"
+                       placeholder="Buscar usuario, fecha, fase, parámetros o resultado...">
+            </div>
+
+            <div class="filter-group">
+                <select id="filtro-fase" class="filter-select">
+                    <option value="">Todas las fases</option>
+                    <option value="Fase 1">Fase 1</option>
+                    <option value="Fase 2">Fase 2</option>
+                    <option value="Fase 3">Fase 3</option>
+                    <option value="Fase 4">Fase 4</option>
+                </select>
+
+                <button id="boton-recargar" class="refresh-button" type="button">
+                    Recargar
+                </button>
+            </div>
+        </section>
+
+        <div id="estado" class="status-message loading">
+            Cargando resultados...
         </div>
 
-        <table id="tabla">
-            <thead>
-                <tr>
-                    <th>Usuario</th>
-                    <th>Fecha de Ejecución</th>
-                    <th>Fase</th>
-                    <th>Parámetros</th>
-                    <th>Resultado</th>
-                </tr>
-            </thead>
-            <tbody>
-                </tbody>
-        </table>
+        <section class="table-card">
+            <div class="table-wrapper">
+                <table id="tabla">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Fecha de Ejecución</th>
+                            <th>Fase</th>
+                            <th>Parámetros</th>
+                            <th>Resultado</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
     </div>
 
     <script>
         let datosGlobales = [];
 
+        function escapeHTML(valor) {
+            return String(valor ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
         function obtenerClaseFase(faseTexto) {
-            if(faseTexto.includes("1")) return "fase-1";
-            if(faseTexto.includes("2")) return "fase-2";
-            if(faseTexto.includes("3")) return "fase-3";
-            if(faseTexto.includes("4")) return "fase-4";
-            return "fase-default";
+            if (faseTexto.includes('1')) return 'fase-1';
+            if (faseTexto.includes('2')) return 'fase-2';
+            if (faseTexto.includes('3')) return 'fase-3';
+            if (faseTexto.includes('4')) return 'fase-4';
+            return 'fase-default';
+        }
+
+        function actualizarContador(total) {
+            document.getElementById('contador-registros').textContent = total;
+        }
+
+        function actualizarUltimaActualizacion() {
+            const ahora = new Date();
+            document.getElementById('ultima-actualizacion').textContent =
+                ahora.toLocaleString('es-ES');
+        }
+
+        function mostrarEstado(texto, tipo) {
+            const estado = document.getElementById('estado');
+            estado.textContent = texto;
+            estado.className = `status-message ${tipo}`;
         }
 
         function dibujarTabla(datos) {
             const tbody = document.querySelector('#tabla tbody');
             tbody.innerHTML = '';
 
+            actualizarContador(datos.length);
+
             if (datos.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No se encontraron resultados</td></tr>';
+                tbody.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="empty-state">
+                                    No se encontraron resultados con los filtros actuales.
+                                </td>
+                            </tr>
+                        `;
                 return;
             }
 
-            datos.forEach(item => {
-                const claseFase = obtenerClaseFase(item.fase);
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${item.usuario}</strong></td>
-                        <td style="color: #718096; font-size: 14px;">${item.fecha}</td>
-                        <td><span class="badge ${claseFase}">${item.fase}</span></td>
-                        <td><code>${item.parametros}</code></td>
-                        <td style="font-weight: 600;">${item.resultado}</td>
-                    </tr>
-                `;
-            });
+            const filasHTML = datos.map(item => {
+                const claseFase = obtenerClaseFase(item.fase || '');
+                return `
+                            <tr>
+                                <td class="usuario-cell">
+                                    <strong>${escapeHTML(item.usuario)}</strong>
+                                </td>
+                                <td class="fecha-cell">
+                                    ${escapeHTML(item.fecha)}
+                                </td>
+                                <td>
+                                    <span class="badge ${claseFase}">
+                                        ${escapeHTML(item.fase)}
+                                    </span>
+                                </td>
+                                <td>
+                                    <code>${escapeHTML(item.parametros)}</code>
+                                </td>
+                                <td class="resultado-cell">
+                                    ${escapeHTML(item.resultado)}
+                                </td>
+                            </tr>
+                        `;
+            }).join('');
+
+            tbody.innerHTML = filasHTML;
         }
 
-        fetch('/api/resultados')
-            .then(res => res.json())
-            .then(data => {
-                datosGlobales = data;
-                dibujarTabla(datosGlobales);
+        function aplicarFiltros() {
+            const textoBusqueda = document.getElementById('buscador').value.toLowerCase().trim();
+            const faseSeleccionada = document.getElementById('filtro-fase').value;
+
+            const datosFiltrados = datosGlobales.filter(item => {
+                const usuario = (item.usuario || '').toLowerCase();
+                const fecha = (item.fecha || '').toLowerCase();
+                const fase = (item.fase || '').toLowerCase();
+                const parametros = (item.parametros || '').toLowerCase();
+                const resultado = (item.resultado || '').toLowerCase();
+
+                const coincideBusqueda =
+                    usuario.includes(textoBusqueda) ||
+                    fecha.includes(textoBusqueda) ||
+                    fase.includes(textoBusqueda) ||
+                    parametros.includes(textoBusqueda) ||
+                    resultado.includes(textoBusqueda);
+
+                const coincideFase = !faseSeleccionada || item.fase === faseSeleccionada;
+
+                return coincideBusqueda && coincideFase;
             });
 
-        // Lógica del buscador en tiempo real 
-        document.getElementById('buscador').addEventListener('input', function(e) {
-            const textoBusqueda = e.target.value.toLowerCase();
-            
-            const datosFiltrados = datosGlobales.filter(item => {
-                return item.usuario.toLowerCase().includes(textoBusqueda) || 
-                       item.fase.toLowerCase().includes(textoBusqueda) ||
-                       item.resultado.toLowerCase().includes(textoBusqueda) ||
-                       item.fecha.toLowerCase().includes(textoBusqueda); // ¡Ahora busca por fecha!
-            });
-            
             dibujarTabla(datosFiltrados);
-        });
+        }
+
+        async function cargarDatos() {
+            try {
+                mostrarEstado('Cargando resultados...', 'loading');
+
+                const respuesta = await fetch('/api/resultados');
+
+                if (!respuesta.ok) {
+                    throw new Error(`HTTP ${respuesta.status}`);
+                }
+
+                const data = await respuesta.json();
+                datosGlobales = Array.isArray(data) ? data : [];
+
+                aplicarFiltros();
+                actualizarUltimaActualizacion();
+
+                if (datosGlobales.length > 0) {
+                    mostrarEstado('Datos cargados correctamente.', 'success');
+                } else {
+                    mostrarEstado('No hay registros todavía.', 'loading');
+                }
+            } catch (error) {
+                console.error(error);
+                datosGlobales = [];
+                dibujarTabla([]);
+                mostrarEstado('No se pudieron cargar los resultados.', 'error');
+            }
+        }
+
+        document.getElementById('buscador').addEventListener('input', aplicarFiltros);
+        document.getElementById('filtro-fase').addEventListener('change', aplicarFiltros);
+        document.getElementById('boton-recargar').addEventListener('click', cargarDatos);
+
+        cargarDatos();
     </script>
 </body>
 </html>
