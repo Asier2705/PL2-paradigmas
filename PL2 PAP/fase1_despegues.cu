@@ -1,10 +1,28 @@
 #include <iostream>
+#include <vector>
 #include <cmath>
 #include <cuda_runtime.h>
 
 #include "fase1_despegues.h"
 #include "info_gpu.h"
 #include "cloud_envio.h"
+
+struct CoincidenciaDespegue {
+    int indice_vuelo;
+    float dep_delay;
+};
+
+int pedir_cantidad_subir_fase1(int total_disponibles) {
+    int cantidad;
+    std::cout << "Hay " << total_disponibles
+        << " coincidencias. Cuantas quieres subir al cloud? ";
+    std::cin >> cantidad;
+
+    if (cantidad < 1) cantidad = 1;
+    if (cantidad > total_disponibles) cantidad = total_disponibles;
+
+    return cantidad;
+}
 
 //Este es el kernel principal. Cada hilo coge un vuelo y comprueba si se pasa del límite
 __global__ void filtrar_despegues_gpu(const float* array_retrasos, int total_vuelos, int limite_minutos) {
@@ -49,8 +67,10 @@ void lanzar_fase1(const DatosVuelos& datos) {
     int total = static_cast<int>(datos.retraso_salida.size());
     std::size_t tamano_bytes = total * sizeof(float);
 
-    //Contamos en CPU cuántos vuelos cumplen la condición para poder resumir la fase en el cloud
-    int coincidencias = 0;
+    //Guardamos en CPU todas las coincidencias para poder subir luego las que el usuario quiera
+    std::vector<CoincidenciaDespegue> coincidencias_encontradas;
+    coincidencias_encontradas.reserve(total);
+
     for (int i = 0; i < total; i++) {
         float minutos = datos.retraso_salida[i];
 
@@ -60,9 +80,14 @@ void lanzar_fase1(const DatosVuelos& datos) {
 
         if ((limite >= 0 && minutos >= limite) ||
             (limite < 0 && minutos <= limite)) {
-            coincidencias++;
+            CoincidenciaDespegue c;
+            c.indice_vuelo = i;
+            c.dep_delay = minutos;
+            coincidencias_encontradas.push_back(c);
         }
     }
+
+    int coincidencias = static_cast<int>(coincidencias_encontradas.size());
 
     float* d_retrasos = nullptr;
 
@@ -101,37 +126,43 @@ void lanzar_fase1(const DatosVuelos& datos) {
         std::cout << "Total de coincidencias encontradas: " << coincidencias << "\n";
     }
 
-
     //Limpiamos la memoria para que no haya fugas
     cudaFree(d_retrasos);
 
-    //Preparamos el registro para cloud
-    RegistroCloud registro;
-    registro.fase = "Fase 1";
-    registro.fecha = obtener_fecha_actual();
-    registro.parametros = "umbral=" + std::to_string(limite);
-    registro.resultado = "coincidencias=" + std::to_string(coincidencias);
+    if (coincidencias == 0) {
+        std::cout << "No hay coincidencias para subir al cloud.\n";
+        return;
+    }
 
     if (preguntar_subida_cloud()) {
-        registro.usuario = pedir_usuario_cloud();
+        std::string usuario = pedir_usuario_cloud();
+        int cantidad_subir = pedir_cantidad_subir_fase1(coincidencias);
 
-        bool enviado_ok = enviar_registro_cloud(registro);
+        int enviados_ok = 0;
 
-        if (enviado_ok) {
-            std::cout << "\nResultado enviado correctamente al cloud.\n";
+        for (int i = 0; i < cantidad_subir; i++) {
+            RegistroCloud registro;
+            registro.usuario = usuario;
+            registro.fase = "Fase 1";
+            registro.fecha = obtener_fecha_actual();
+            registro.parametros = "umbral=" + std::to_string(limite);
+            registro.resultado =
+                "coincidencia=" + std::to_string(i + 1) + "/" + std::to_string(coincidencias) +
+                ",indice_vuelo=" + std::to_string(coincidencias_encontradas[i].indice_vuelo) +
+                ",DEP_DELAY=" + std::to_string(coincidencias_encontradas[i].dep_delay);
+
+            bool enviado_ok = enviar_registro_cloud(registro);
+
+            if (enviado_ok) {
+                enviados_ok++;
+            }
+            else {
+                std::cout << "\nNo se pudo enviar esta coincidencia al cloud. Se muestra el registro localmente:\n";
+                mostrar_registro_cloud(registro);
+            }
         }
-        else {
-            std::cout << "\nNo se pudo enviar al cloud. Se muestra el registro localmente:\n";
-            mostrar_registro_cloud(registro);
-        }
+
+        std::cout << "\nResumen de subida: " << enviados_ok
+            << " de " << cantidad_subir << " coincidencias enviadas correctamente.\n";
     }
 }
-
-
-
-
-
-
-
-
-

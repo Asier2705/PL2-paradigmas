@@ -10,7 +10,7 @@
 #pragma comment(lib, "winhttp.lib")
 
 namespace {
-    const wchar_t* HOST_CLOUD = L"pl2paradigmasapi-bpfqagahgjdydvc7.scm.spaincentral-01.azurewebsites.net";
+    const wchar_t* HOST_CLOUD = L"pl2paradigmasapi-bpfqagahgjdydvc7.spaincentral-01.azurewebsites.net";
     const wchar_t* RUTA_API = L"/api/resultados";
     const INTERNET_PORT PUERTO_CLOUD = INTERNET_DEFAULT_HTTPS_PORT;
 

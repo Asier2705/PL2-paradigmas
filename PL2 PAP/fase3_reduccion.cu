@@ -6,7 +6,6 @@
 
 #include "fase3_reduccion.h"
 #include "info_gpu.h"
-
 #include "cloud_envio.h"
 
 //Funciones propias para GPU porque std::max y std::min a veces dan problemas en CUDA
@@ -21,16 +20,14 @@ __device__ int saca_min(int a, int b) {
 // ==========================================
 // 3.1 SIMPLE (Fuerza Bruta)
 // ==========================================
-//El peor caso: todos los hilos atacan la memoria global a la vez generando un atasco grande.
 
 __global__ void reduccion_fuerza_bruta_max(const int* array_datos, int total_vuelos, int* resultado_final) {
     int id_global = blockIdx.x * blockDim.x + threadIdx.x;
     if (id_global >= total_vuelos) return;
 
     int valor = array_datos[id_global];
-    if (valor == INT_MIN) return; //Si era un NaN, lo ignoramos
+    if (valor == INT_MIN) return;
 
-    //Operación atómica directa a la global. Cuello de botella.
     atomicMax(resultado_final, valor);
 }
 
@@ -47,7 +44,6 @@ __global__ void reduccion_fuerza_bruta_min(const int* array_datos, int total_vue
 // ==========================================
 // 3.2 BASICA (Memoria Compartida y Vecinos)
 // ==========================================
-//Mejoramos usando la caché del bloque (memoria compartida).
 
 __global__ void reduccion_vecinos_max(const int* array_datos, int total_vuelos, int* resultado_final) {
     extern __shared__ int mem_compartida[];
@@ -55,19 +51,15 @@ __global__ void reduccion_vecinos_max(const int* array_datos, int total_vuelos, 
     int hilo_local = threadIdx.x;
     int id_global = blockIdx.x * blockDim.x + hilo_local;
 
-    //Metemos nuestro dato en la memoria rápida del bloque
     if (id_global < total_vuelos) mem_compartida[hilo_local] = array_datos[id_global];
-    else mem_compartida[hilo_local] = INT_MIN; //Rellenamos con un número que no afecte al máximo
+    else mem_compartida[hilo_local] = INT_MIN;
 
-    // BARRERA: Esperamos a que todos hayan copiado su dato
     __syncthreads();
 
     if (id_global >= total_vuelos) return;
 
     int actual = mem_compartida[hilo_local];
-    //Miramos al de la izquierda (con cuidado de los bordes del bloque)
     int anterior = (hilo_local == 0) ? ((id_global > 0) ? array_datos[id_global - 1] : INT_MIN) : mem_compartida[hilo_local - 1];
-    //Miramos al de la derecha
     int posterior = (hilo_local == blockDim.x - 1 || id_global == total_vuelos - 1)
         ? ((id_global < total_vuelos - 1) ? array_datos[id_global + 1] : INT_MIN)
         : mem_compartida[hilo_local + 1];
@@ -102,7 +94,6 @@ __global__ void reduccion_vecinos_min(const int* array_datos, int total_vuelos, 
 // ==========================================
 // 3.3 INTERMEDIA (Optimización Par/Impar)
 // ==========================================
-//Aquí quitamos el 50% del atasco global apagando los hilos impares.
 
 __global__ void reduccion_pares_max(const int* array_datos, int total_vuelos, int* resultado_final) {
     extern __shared__ int mem_compartida[];
@@ -123,12 +114,10 @@ __global__ void reduccion_pares_max(const int* array_datos, int total_vuelos, in
         ? ((id_global < total_vuelos - 1) ? array_datos[id_global + 1] : INT_MIN)
         : mem_compartida[hilo_local + 1];
 
-    //Guardamos el ganador de los 3 vecinos de vuelta en compartida
     mem_compartida[hilo_local] = saca_max(saca_max(actual, anterior), posterior);
 
     __syncthreads();
 
-    //Solo la mitad par hace el atomic a memoria global
     if (hilo_local % 2 == 0) {
         int vecino_impar = (hilo_local + 1 < blockDim.x && id_global + 1 < total_vuelos) ? mem_compartida[hilo_local + 1] : INT_MIN;
         int ganador_pareja = saca_max(mem_compartida[hilo_local], vecino_impar);
@@ -169,26 +158,22 @@ __global__ void reduccion_pares_min(const int* array_datos, int total_vuelos, in
 // ==============================================
 // 3.4 PATRON DE REDUCCION (El Árbol)
 // ==============================================
-//Algoritmo óptimo: dividimos la carga a la mitad en cada paso.
 
 __global__ void reduccion_arbol_max(const int* entrada, int total_vuelos, int* salida_bloque) {
     extern __shared__ int mem_compartida[];
 
     int hilo_local = threadIdx.x;
-    //Multiplicamos por 2 porque cada hilo procesa 2 elementos al cargar
     int inicio = blockIdx.x * blockDim.x * 2;
     int i = inicio + hilo_local;
 
     int valor = INT_MIN;
 
-    //Primera ronda de limpieza (comparamos ya 2 posiciones al subir a compartida)
     if (i < total_vuelos) valor = entrada[i];
     if (i + blockDim.x < total_vuelos) valor = saca_max(valor, entrada[i + blockDim.x]);
 
     mem_compartida[hilo_local] = valor;
     __syncthreads();
 
-    //El árbol: dividimos el salto (stride) a la mitad cada vuelta
     for (int salto = blockDim.x / 2; salto > 0; salto >>= 1) {
         if (hilo_local < salto) {
             mem_compartida[hilo_local] = saca_max(mem_compartida[hilo_local], mem_compartida[hilo_local + salto]);
@@ -196,7 +181,6 @@ __global__ void reduccion_arbol_max(const int* entrada, int total_vuelos, int* s
         __syncthreads();
     }
 
-    //El hilo 0 es el "jefe" del bloque y guarda el ganador final
     if (hilo_local == 0) {
         salida_bloque[blockIdx.x] = mem_compartida[0];
     }
@@ -311,12 +295,10 @@ bool test_variante_3_intermedia(const int* d_datos, int total, bool es_maximo,
 bool test_variante_4_arbol(const int* d_datos, int total, bool es_maximo,
     int hilos, std::size_t memoria_dinamica, int& res_final) {
 
-    //Aquí implementamos las "Reducciones Sucesivas" en el Host
     int* puntero_bucle = const_cast<int*>(d_datos);
     int tope_bucle = total;
     bool toca_liberar = false;
 
-    //Relanzamos kernels hasta que nos queden 10 aviones o menos
     while (tope_bucle > 10) {
         int nuevos_bloques = (tope_bucle + (hilos * 2 - 1)) / (hilos * 2);
         int* buffer_parcial = nullptr;
@@ -346,7 +328,6 @@ bool test_variante_4_arbol(const int* d_datos, int total, bool es_maximo,
         toca_liberar = true;
     }
 
-    //Rematamos los últimos elementos sobrantes de forma secuencial en C++
     std::vector<int> array_final_host(tope_bucle);
     cudaError_t error = cudaMemcpy(array_final_host.data(), puntero_bucle, tope_bucle * sizeof(int), cudaMemcpyDeviceToHost);
 
@@ -425,15 +406,14 @@ void lanzar_fase3(const DatosVuelos& datos) {
     int total_elementos = static_cast<int>(array_elegido->size());
     std::vector<int> datos_enteros(total_elementos);
 
-    //Bucle clave de la CPU: truncamos los flotantes con un cast.
     for (int i = 0; i < total_elementos; i++) {
-        float min_decimales = (*array_elegido)[i];
+        float valor = (*array_elegido)[i];
 
-        if (std::isnan(min_decimales)) {
+        if (std::isnan(valor)) {
             datos_enteros[i] = es_maximo ? INT_MIN : INT_MAX;
         }
         else {
-            datos_enteros[i] = static_cast<int>(min_decimales);
+            datos_enteros[i] = static_cast<int>(valor);
         }
     }
 
@@ -463,7 +443,6 @@ void lanzar_fase3(const DatosVuelos& datos) {
 
     int final_1 = 0, final_2 = 0, final_3 = 0, final_4 = 0;
 
-    //Disparamos los 4 métodos
     bool paso_1 = test_variante_1_simple(d_datos_gpu, total_elementos, es_maximo, hilos_por_bloque, num_bloques, final_1);
     bool paso_2 = test_variante_2_basica(d_datos_gpu, total_elementos, es_maximo, hilos_por_bloque, num_bloques, shared_mem_bytes, final_2);
     bool paso_3 = test_variante_3_intermedia(d_datos_gpu, total_elementos, es_maximo, hilos_por_bloque, num_bloques, shared_mem_bytes, final_3);
@@ -475,10 +454,8 @@ void lanzar_fase3(const DatosVuelos& datos) {
     if (paso_3) std::cout << "3.3 Intermedia -> " << final_3 << "\n"; else std::cout << "3.3 Intermedia -> PETO\n";
     if (paso_4) std::cout << "3.4 Reduccion -> " << final_4 << "\n"; else std::cout << "3.4 Reduccion -> PETO\n";
 
-
     cudaFree(d_datos_gpu);
 
-    //Cloud
     RegistroCloud registro;
     registro.fase = "Fase 3";
     registro.fecha = obtener_fecha_actual();

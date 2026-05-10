@@ -2,6 +2,7 @@
 #include <vector>
 #include <cstring>
 #include <cmath>
+#include <string>
 #include <cuda_runtime.h>
 
 #include "fase2_aterrizajes.h"
@@ -9,6 +10,23 @@
 #include "cloud_envio.h"
 
 #define TOPE_MATRICULA 16
+
+struct CoincidenciaAterrizaje {
+    std::string matricula;
+    float arr_delay;
+};
+
+int pedir_cantidad_subir_fase2(int total_disponibles) {
+    int cantidad;
+    std::cout << "Hay " << total_disponibles
+        << " coincidencias. Cuantas quieres subir al cloud? ";
+    std::cin >> cantidad;
+
+    if (cantidad < 1) cantidad = 1;
+    if (cantidad > total_disponibles) cantidad = total_disponibles;
+
+    return cantidad;
+}
 
 //Usamos memoria constante porque el umbral no cambia y así todos los hilos del warp lo leen a la vez de la caché de manera rápida
 __constant__ int umbral_llegada;
@@ -129,7 +147,7 @@ void lanzar_fase2(const DatosVuelos& datos) {
         return;
     }
 
-    // Reservamos salida con tamaño el tamaño total por si acaso todos los vuelos cumplen la condición
+    // Reservamos salida con tamaño total por si acaso todos los vuelos cumplen la condición
     error = cudaMalloc((void**)&d_matriculas_salida, total * TOPE_MATRICULA * sizeof(char));
     if (error != cudaSuccess) {
         std::cout << "Fallo al reservar memoria para matriculas de salida.\n";
@@ -204,6 +222,10 @@ void lanzar_fase2(const DatosVuelos& datos) {
 
     std::cout << "Total de aviones detectados: " << total_detectados << "\n";
 
+    //Guardamos en CPU las coincidencias detectadas para luego subir las que el usuario quiera
+    std::vector<CoincidenciaAterrizaje> coincidencias_detectadas;
+    coincidencias_detectadas.reserve(total_detectados);
+
     //Si ha cogido a alguno, nos bajamos los resultados para enseñarlos
     if (total_detectados > 0) {
         std::vector<char> matriculas_salida_host(total_detectados * TOPE_MATRICULA, '\0');
@@ -221,34 +243,65 @@ void lanzar_fase2(const DatosVuelos& datos) {
 
         std::cout << "Primeros resultados recuperados en CPU:\n";
 
+        //Construimos el vector de coincidencias completo
+        for (int i = 0; i < total_detectados; i++) {
+            CoincidenciaAterrizaje c;
+            c.matricula = std::string(&matriculas_salida_host[i * TOPE_MATRICULA]);
+            c.arr_delay = tiempos_salida_host[i];
+            coincidencias_detectadas.push_back(c);
+        }
+
         //Imprimimos un máximo de 10 para no colapsar la consola
         int mostrar = (total_detectados < 10) ? total_detectados : 10;
 
         for (int i = 0; i < mostrar; i++) {
             std::cout << "  [" << i << "] "
-                << &matriculas_salida_host[i * TOPE_MATRICULA]
-                << " -> " << tiempos_salida_host[i] << " min\n";
+                << coincidencias_detectadas[i].matricula
+                << " -> " << coincidencias_detectadas[i].arr_delay << " min\n";
         }
     }
 
-    //Preparamos el registro para cloud
-    RegistroCloud registro;
-    registro.fase = "Fase 2";
-    registro.fecha = obtener_fecha_actual();
-    registro.parametros = "umbral=" + std::to_string(limite);
-    registro.resultado = "total_detectados=" + std::to_string(total_detectados);
-
-    if (preguntar_subida_cloud()) {
-        registro.usuario = pedir_usuario_cloud();
-        mostrar_registro_cloud(registro);
-        //añadido
-        enviar_registro_cloud(registro);
-    }
-
-    //Liberemos la VRAM
+    //Liberamos la VRAM antes de pasar a la parte cloud
     cudaFree(d_llegadas);
     cudaFree(d_matriculas);
     cudaFree(d_contador);
     cudaFree(d_matriculas_salida);
     cudaFree(d_tiempos_salida);
+
+    if (total_detectados == 0) {
+        std::cout << "No hay coincidencias para subir al cloud.\n";
+        return;
+    }
+
+    if (preguntar_subida_cloud()) {
+        std::string usuario = pedir_usuario_cloud();
+        int cantidad_subir = pedir_cantidad_subir_fase2(total_detectados);
+
+        int enviados_ok = 0;
+
+        for (int i = 0; i < cantidad_subir; i++) {
+            RegistroCloud registro;
+            registro.usuario = usuario;
+            registro.fase = "Fase 2";
+            registro.fecha = obtener_fecha_actual();
+            registro.parametros = "umbral=" + std::to_string(limite);
+            registro.resultado =
+                "coincidencia=" + std::to_string(i + 1) + "/" + std::to_string(total_detectados) +
+                ",TAIL_NUM=" + coincidencias_detectadas[i].matricula +
+                ",ARR_DELAY=" + std::to_string(coincidencias_detectadas[i].arr_delay);
+
+            bool enviado_ok = enviar_registro_cloud(registro);
+
+            if (enviado_ok) {
+                enviados_ok++;
+            }
+            else {
+                std::cout << "\nNo se pudo enviar esta coincidencia al cloud. Se muestra el registro localmente:\n";
+                mostrar_registro_cloud(registro);
+            }
+        }
+
+        std::cout << "\nResumen de subida: " << enviados_ok
+            << " de " << cantidad_subir << " coincidencias enviadas correctamente.\n";
+    }
 }
