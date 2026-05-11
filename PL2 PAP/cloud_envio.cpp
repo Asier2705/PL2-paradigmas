@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <ctime>
 #include <windows.h>
-#include <winhttp.h>
+#include <winhttp.h> //libreria
 
 #pragma comment(lib, "winhttp.lib")
 
@@ -39,6 +39,8 @@ namespace {
         return out.str();
     }
 
+    //empaquetamos todos los datos (usuario, fase, parámetros y resultados) en un formato JSON 
+    //limpio, escapando los caracteres especiales, para enviarlo por método POST.
     std::string construir_json(const RegistroCloud& registro) {
         std::ostringstream json;
         json << "{"
@@ -58,6 +60,7 @@ namespace {
     }
 }
 
+//El programa captura dinámicamente la fecha y hora del sistema mediante std::time
 std::string obtener_fecha_actual() {
     std::time_t ahora = std::time(nullptr);
     std::tm tiempo_local{};
