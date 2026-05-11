@@ -12,7 +12,7 @@ struct CoincidenciaDespegue {
     float dep_delay;
 };
 
-int pedir_cantidad_subir_fase1(int total_disponibles) {
+int pedir_cantidad_subir_fase1(int total_disponibles) { //funcion para pedir una determinada cantidad al usuario
     int cantidad;
     std::cout << "Hay " << total_disponibles
         << " coincidencias. Cuantas quieres subir al cloud? ";

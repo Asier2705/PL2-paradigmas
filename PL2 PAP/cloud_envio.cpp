@@ -5,7 +5,8 @@
 #include <iomanip>
 #include <ctime>
 #include <windows.h>
-#include <winhttp.h> //libreria
+#include <winhttp.h> //Para la conexión desde C++, hemos implementado la librería nativa WinHTTP, lo que nos permite enviar las peticiones
+//POST a la nube de forma segura y sin añadir dependencias externas al proyecto original
 
 #pragma comment(lib, "winhttp.lib")
 
