@@ -9,6 +9,9 @@ app.use(express.static(__dirname));
 
 const port = process.env.PORT || 3000;
 
+//Por el lado del servidor, hemos desplegado una API REST con Node.js y Express en Azure App Service.
+//  Por seguridad, la conexión a la base de datos Azure SQL se hace estrictamente mediante variables
+//  de entorno, sin exponer credenciales en el código.
 const dbConfig = {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
@@ -20,6 +23,8 @@ const dbConfig = {
     }
 };
 
+//Para la lectura, el método GET realiza un SELECT ordenando los registros por fecha 
+// descendente, cumpliendo así el requisito de visualización del enunciado
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -41,6 +46,9 @@ app.get('/api/resultados', async (req, res) => {
     }
 });
 
+//La API recibe el JSON de C++ a través de la ruta POST /api/resultados. Validamos 
+//los campos y utilizamos consultas parametrizadas con la librería mssql para evitar
+//  inyecciones SQL antes de hacer el INSERT INTO en nuestra tabla.
 app.post('/api/resultados', async (req, res) => {
     const { usuario, fecha, fase, parametros, resultado } = req.body;
 
