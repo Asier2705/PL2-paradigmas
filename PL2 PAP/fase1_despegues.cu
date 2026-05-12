@@ -7,27 +7,34 @@
 #include "info_gpu.h"
 #include "cloud_envio.h"
 
+// Estructura auxiliar para almacenar temporalmente los resultados en memoria Host (CPU)
+// antes de su serialización y envío a la nube.
 struct CoincidenciaDespegue {
     int indice_vuelo;
     float dep_delay;
 };
 
-int pedir_cantidad_subir_fase1(int total_disponibles) { //funcion para pedir una determinada cantidad al usuario
+// Función interactiva: Otorga al usuario un control granular sobre la cantidad
+// de peticiones HTTP que se realizarán a la API, evitando saturar la red.
+int pedir_cantidad_subir_fase1(int total_disponibles) { 
     int cantidad;
     std::cout << "Hay " << total_disponibles
         << " coincidencias. Cuantas quieres subir al cloud? ";
     std::cin >> cantidad;
 
+    // Validación de límites de entrada
     if (cantidad < 1) cantidad = 1;
     if (cantidad > total_disponibles) cantidad = total_disponibles;
 
     return cantidad;
 }
 
-//Este es el kernel principal. Cada hilo coge un vuelo y comprueba si se pasa del límite
+// =========================================================================
+// KERNEL CUDA: Evaluación paralela del umbral de despegue
+// =========================================================================
 __global__ void filtrar_despegues_gpu(const float* array_retrasos, int total_vuelos, int limite_minutos) {
 
-    //Calculamos qué vuelo le toca exactamente a este hilo
+    // Cálculo del identificador global del hilo (Grid 1D) para acceso coalescente a memoria
     int id_hilo = blockIdx.x * blockDim.x + threadIdx.x;
 
     //Si nos salimos de la cantidad real de vuelos, apagamos el hilo para no leer basura en memoria
@@ -53,6 +60,9 @@ __global__ void filtrar_despegues_gpu(const float* array_retrasos, int total_vue
     }
 }
 
+// =========================================================================
+// FUNCIÓN PRINCIPAL DE FASE 1 (Host)
+// =========================================================================
 void lanzar_fase1(const DatosVuelos& datos) {
     if (datos.num_filas == 0) {
         std::cout << "Primero hay que cargar un CSV válido.\n";
@@ -67,7 +77,8 @@ void lanzar_fase1(const DatosVuelos& datos) {
     int total = static_cast<int>(datos.retraso_salida.size());
     std::size_t tamano_bytes = total * sizeof(float);
 
-    //Guardamos en CPU todas las coincidencias para poder subir luego las que el usuario quiera
+    // Almacenamos en CPU todas las coincidencias para procesar posteriormente
+    // la selección interactiva de envío al entorno Cloud.
     std::vector<CoincidenciaDespegue> coincidencias_encontradas;
     coincidencias_encontradas.reserve(total);
 
@@ -91,14 +102,14 @@ void lanzar_fase1(const DatosVuelos& datos) {
 
     float* d_retrasos = nullptr;
 
-    //Reservamos hueco en la VRAM de la gráfica
+    // 1. Reserva de memoria lineal en el Device (VRAM)
     cudaError_t error = cudaMalloc((void**)&d_retrasos, tamano_bytes);
     if (error != cudaSuccess) {
         std::cout << "Fallo al reservar memoria en GPU: " << cudaGetErrorString(error) << "\n";
         return;
     }
 
-    //Mandamos el vector de C++ a la gráfica
+    // 2. Transferencia de datos Host-to-Device a través del bus PCIe
     error = cudaMemcpy(d_retrasos, datos.retraso_salida.data(), tamano_bytes, cudaMemcpyHostToDevice);
     if (error != cudaSuccess) {
         std::cout << "Fallo al copiar los datos a la VRAM: " << cudaGetErrorString(error) << "\n";
@@ -106,17 +117,17 @@ void lanzar_fase1(const DatosVuelos& datos) {
         return;
     }
 
-    //Consultamos la gráfica para no meter hilos a piñón
+    // 3. Consulta dinámica del hardware para maximizar la ocupación
     int hilos_bloque = elegir_hilos_por_bloque();
     int bloques_grid = calcular_num_bloques(total, hilos_bloque);
 
     std::cout << "Lanzando kernel con " << bloques_grid << " bloques y "
         << hilos_bloque << " hilos por bloque.\n";
 
-    //Disparamos el kernel
+    // 4. Lanzamiento del Kernel asíncrono
     filtrar_despegues_gpu << <bloques_grid, hilos_bloque >> > (d_retrasos, total, limite);
 
-    //Esperamos a que la GPU termine de imprimir todo
+    // 5. Barrera de sincronización: El Host espera a que la GPU finalice sus impresiones
     error = cudaDeviceSynchronize();
     if (error != cudaSuccess) {
         std::cout << "Error en la ejecucion del kernel: " << cudaGetErrorString(error) << "\n";
@@ -126,13 +137,19 @@ void lanzar_fase1(const DatosVuelos& datos) {
         std::cout << "Total de coincidencias encontradas: " << coincidencias << "\n";
     }
 
-    //Limpiamos la memoria para que no haya fugas
+    // Liberación de recursos para evitar fugas de memoria (Memory Leaks) en la GPU
     cudaFree(d_retrasos);
+
 
     if (coincidencias == 0) {
         std::cout << "No hay coincidencias para subir al cloud.\n";
         return;
     }
+
+
+    // =========================================================================
+    // MÓDULO CLOUD: Interacción y Envío de Peticiones
+    // =========================================================================
 
     if (preguntar_subida_cloud()) {
         std::string usuario = pedir_usuario_cloud();
@@ -146,6 +163,8 @@ void lanzar_fase1(const DatosVuelos& datos) {
             registro.fase = "Fase 1";
             registro.fecha = obtener_fecha_actual();
             registro.parametros = "umbral=" + std::to_string(limite);
+
+            // Empaquetado de los metadatos relevantes de la ejecución
             registro.resultado =
                 "coincidencia=" + std::to_string(i + 1) + "/" + std::to_string(coincidencias) +
                 ",indice_vuelo=" + std::to_string(coincidencias_encontradas[i].indice_vuelo) +
@@ -157,6 +176,8 @@ void lanzar_fase1(const DatosVuelos& datos) {
                 enviados_ok++;
             }
             else {
+                // Implementación de resiliencia: Si la red falla, no se aborta el programa,
+                // sino que se muestra el registro localmente como plan de contingencia.
                 std::cout << "\nNo se pudo enviar esta coincidencia al cloud. Se muestra el registro localmente:\n";
                 mostrar_registro_cloud(registro);
             }
