@@ -1,27 +1,57 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <!-- Codificación de caracteres para permitir tildes, eñes y símbolos correctamente -->
     <meta charset="UTF-8">
+
+    <!-- Configuración responsive para que el dashboard se adapte a móviles y pantallas pequeñas -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Título que aparece en la pestaña del navegador -->
     <title>Dashboard de Vuelos PL2</title>
+
+    <!-- Hoja de estilos externa encargada del diseño visual del panel -->
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+    <!-- =========================================================================
+         CONTENEDOR PRINCIPAL DEL DASHBOARD
+         ========================================================================= -->
+
     <div class="dashboard-container">
+
+        <!-- =========================================================================
+             CABECERA PRINCIPAL
+             =========================================================================
+             Esta sección muestra el título del panel y un resumen rápido de estado:
+             número de registros visibles y última actualización.
+        -->
+
         <header class="hero">
             <div class="hero-text">
+                <!-- Texto pequeño superior para identificar el contexto de la práctica -->
                 <p class="eyebrow">Computación en la nube · PL2</p>
+
+                <!-- Título principal del dashboard -->
                 <h1>🛫 Panel de Control de Resultados</h1>
+
+                <!-- Breve descripción del objetivo de la página -->
                 <p class="hero-subtitle">
                     Visualización de ejecuciones enviadas desde CUDA al entorno cloud.
                 </p>
             </div>
 
+            <!-- Tarjetas con estadísticas rápidas del estado actual del panel -->
             <div class="hero-stats">
+
+                <!-- Tarjeta que muestra cuántos registros están visibles tras aplicar filtros -->
                 <div class="stat-card">
                     <span class="stat-label">Registros visibles</span>
                     <span class="stat-value" id="contador-registros">0</span>
                 </div>
+
+                <!-- Tarjeta que muestra la fecha y hora de la última carga de datos -->
                 <div class="stat-card">
                     <span class="stat-label">Última actualización</span>
                     <span class="stat-value stat-date" id="ultima-actualizacion">—</span>
@@ -29,7 +59,16 @@
             </div>
         </header>
 
+        <!-- =========================================================================
+             CONTROLES DE BÚSQUEDA Y FILTRADO
+             =========================================================================
+             Permiten buscar registros por texto y filtrar los resultados por fase.
+        -->
+
         <section class="controls">
+
+            <!-- Campo de búsqueda general.
+                 Permite buscar por usuario, fecha, fase, parámetros o resultado. -->
             <div class="search-group">
                 <input type="text"
                        id="buscador"
@@ -37,7 +76,10 @@
                        placeholder="Buscar usuario, fecha, fase, parámetros o resultado...">
             </div>
 
+            <!-- Grupo de controles secundarios: filtro por fase y botón de recarga -->
             <div class="filter-group">
+
+                <!-- Selector para filtrar los registros por fase de ejecución -->
                 <select id="filtro-fase" class="filter-select">
                     <option value="">Todas las fases</option>
                     <option value="Fase 1">Fase 1</option>
@@ -46,15 +88,29 @@
                     <option value="Fase 4">Fase 4</option>
                 </select>
 
+                <!-- Botón que fuerza una nueva petición al servidor para recargar datos -->
                 <button id="boton-recargar" class="refresh-button" type="button">
                     Recargar
                 </button>
             </div>
         </section>
 
+        <!-- =========================================================================
+             MENSAJE DE ESTADO
+             =========================================================================
+             Muestra si los datos se están cargando, si se han cargado correctamente
+             o si ha ocurrido un error.
+        -->
+
         <div id="estado" class="status-message loading">
             Cargando resultados...
         </div>
+
+        <!-- =========================================================================
+             TABLA DE RESULTADOS
+             =========================================================================
+             Aquí se muestran los registros recibidos desde la API del servidor.
+        -->
 
         <section class="table-card">
             <div class="table-wrapper">
@@ -68,15 +124,33 @@
                             <th>Resultado</th>
                         </tr>
                     </thead>
+
+                    <!-- El cuerpo de la tabla se rellena dinámicamente con JavaScript -->
                     <tbody></tbody>
                 </table>
             </div>
         </section>
     </div>
 
+    <!-- =========================================================================
+         SCRIPT PRINCIPAL DEL DASHBOARD
+         =========================================================================
+         Gestiona la carga de datos desde el servidor, los filtros, la búsqueda
+         y la actualización dinámica de la tabla.
+    -->
+
     <script>
+        // Array global donde se almacenan todos los registros recibidos desde la API.
+        // A partir de este array se aplican los filtros y búsquedas.
         let datosGlobales = [];
 
+        // =========================================================================
+        // FUNCIÓN DE SEGURIDAD: Escape de HTML
+        // =========================================================================
+
+        // Convierte caracteres especiales en entidades HTML.
+        // Esto evita que un resultado recibido desde el servidor pueda inyectar
+        // código HTML o JavaScript dentro de la página.
         function escapeHTML(valor) {
             return String(valor ?? '')
                 .replaceAll('&', '&amp;')
@@ -86,36 +160,68 @@
                 .replaceAll("'", '&#039;');
         }
 
+        // =========================================================================
+        // FUNCIÓN AUXILIAR: Clase visual según la fase
+        // =========================================================================
+
+        // Devuelve una clase CSS distinta según la fase del registro.
+        // Esto permite aplicar colores diferentes a cada badge de fase.
         function obtenerClaseFase(faseTexto) {
             if (faseTexto.includes('1')) return 'fase-1';
             if (faseTexto.includes('2')) return 'fase-2';
             if (faseTexto.includes('3')) return 'fase-3';
             if (faseTexto.includes('4')) return 'fase-4';
+
+            // Clase por defecto si la fase no coincide con ninguna conocida
             return 'fase-default';
         }
 
+        // =========================================================================
+        // FUNCIONES DE ACTUALIZACIÓN DE ESTADÍSTICAS
+        // =========================================================================
+
+        // Actualiza el contador de registros visibles en la cabecera.
         function actualizarContador(total) {
             document.getElementById('contador-registros').textContent = total;
         }
 
+        // Actualiza la fecha y hora de la última carga correcta de datos.
         function actualizarUltimaActualizacion() {
             const ahora = new Date();
+
             document.getElementById('ultima-actualizacion').textContent =
                 ahora.toLocaleString('es-ES');
         }
 
+        // =========================================================================
+        // FUNCIÓN DE ESTADO VISUAL
+        // =========================================================================
+
+        // Muestra un mensaje de estado y cambia su clase CSS.
+        // El parámetro "tipo" puede ser, por ejemplo: loading, success o error.
         function mostrarEstado(texto, tipo) {
             const estado = document.getElementById('estado');
+
             estado.textContent = texto;
             estado.className = `status-message ${tipo}`;
         }
 
+        // =========================================================================
+        // FUNCIÓN PRINCIPAL DE DIBUJADO DE TABLA
+        // =========================================================================
+
+        // Recibe un array de registros y los representa en la tabla.
+        // Esta función no carga datos del servidor, solo pinta los datos ya recibidos.
         function dibujarTabla(datos) {
             const tbody = document.querySelector('#tabla tbody');
+
+            // Se limpia el contenido anterior de la tabla
             tbody.innerHTML = '';
 
+            // Se actualiza el contador de registros visibles
             actualizarContador(datos.length);
 
+            // Si no hay datos que mostrar, se inserta una fila de estado vacío
             if (datos.length === 0) {
                 tbody.innerHTML = `
                             <tr>
@@ -127,8 +233,11 @@
                 return;
             }
 
+            // Se construye el HTML de todas las filas a partir del array de datos.
+            // Cada campo se pasa por escapeHTML para evitar problemas de seguridad.
             const filasHTML = datos.map(item => {
                 const claseFase = obtenerClaseFase(item.fase || '');
+
                 return `
                             <tr>
                                 <td class="usuario-cell">
@@ -152,20 +261,30 @@
                         `;
             }).join('');
 
+            // Inserción final de las filas generadas dentro del cuerpo de la tabla
             tbody.innerHTML = filasHTML;
         }
 
+        // =========================================================================
+        // FUNCIÓN DE FILTRADO Y BÚSQUEDA
+        // =========================================================================
+
+        // Aplica los filtros actuales del buscador y del selector de fase.
+        // Después redibuja la tabla con los resultados filtrados.
         function aplicarFiltros() {
             const textoBusqueda = document.getElementById('buscador').value.toLowerCase().trim();
             const faseSeleccionada = document.getElementById('filtro-fase').value;
 
             const datosFiltrados = datosGlobales.filter(item => {
+                // Normalización de campos a minúsculas para hacer búsquedas
+                // independientes de mayúsculas/minúsculas.
                 const usuario = (item.usuario || '').toLowerCase();
                 const fecha = (item.fecha || '').toLowerCase();
                 const fase = (item.fase || '').toLowerCase();
                 const parametros = (item.parametros || '').toLowerCase();
                 const resultado = (item.resultado || '').toLowerCase();
 
+                // La búsqueda se aplica sobre todos los campos principales
                 const coincideBusqueda =
                     usuario.includes(textoBusqueda) ||
                     fecha.includes(textoBusqueda) ||
@@ -173,47 +292,84 @@
                     parametros.includes(textoBusqueda) ||
                     resultado.includes(textoBusqueda);
 
+                // El filtro de fase solo se aplica si el usuario ha elegido una fase concreta
                 const coincideFase = !faseSeleccionada || item.fase === faseSeleccionada;
 
                 return coincideBusqueda && coincideFase;
             });
 
+            // Se actualiza la tabla con los datos que cumplen los filtros
             dibujarTabla(datosFiltrados);
         }
 
+        // =========================================================================
+        // FUNCIÓN ASÍNCRONA DE CARGA DE DATOS
+        // =========================================================================
+
+        // Solicita los resultados al backend mediante una petición HTTP GET.
+        // El servidor debe exponer el endpoint /api/resultados, que devuelve
+        // un array JSON con los registros subidos desde el programa CUDA.
         async function cargarDatos() {
             try {
+                // Se muestra estado de carga mientras se realiza la petición
                 mostrarEstado('Cargando resultados...', 'loading');
 
+                // Petición al endpoint del servidor
                 const respuesta = await fetch('/api/resultados');
 
+                // Si el servidor responde con error HTTP, se lanza una excepción
                 if (!respuesta.ok) {
                     throw new Error(`HTTP ${respuesta.status}`);
                 }
 
+                // Conversión de la respuesta JSON a objeto JavaScript
                 const data = await respuesta.json();
+
+                // Se garantiza que datosGlobales sea siempre un array
                 datosGlobales = Array.isArray(data) ? data : [];
 
+                // Se aplican los filtros actuales sobre los nuevos datos
                 aplicarFiltros();
+
+                // Se actualiza la fecha de última carga correcta
                 actualizarUltimaActualizacion();
 
+                // Mensaje de estado según haya o no registros
                 if (datosGlobales.length > 0) {
                     mostrarEstado('Datos cargados correctamente.', 'success');
                 } else {
                     mostrarEstado('No hay registros todavía.', 'loading');
                 }
             } catch (error) {
+                // Si ocurre cualquier error de red, servidor o JSON, se limpia
+                // la tabla y se muestra un mensaje de error al usuario.
                 console.error(error);
+
                 datosGlobales = [];
                 dibujarTabla([]);
+
                 mostrarEstado('No se pudieron cargar los resultados.', 'error');
             }
         }
 
+        // =========================================================================
+        // EVENTOS DE INTERFAZ
+        // =========================================================================
+
+        // Cada vez que el usuario escribe en el buscador, se aplican filtros
         document.getElementById('buscador').addEventListener('input', aplicarFiltros);
+
+        // Cada vez que cambia la fase seleccionada, se aplican filtros
         document.getElementById('filtro-fase').addEventListener('change', aplicarFiltros);
+
+        // Al pulsar el botón Recargar, se vuelve a pedir la información al servidor
         document.getElementById('boton-recargar').addEventListener('click', cargarDatos);
 
+        // =========================================================================
+        // CARGA INICIAL
+        // =========================================================================
+
+        // Al abrir la página, se cargan automáticamente los datos del backend.
         cargarDatos();
     </script>
 </body>

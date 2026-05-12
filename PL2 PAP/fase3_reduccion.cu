@@ -8,6 +8,10 @@
 #include "info_gpu.h"
 #include "cloud_envio.h"
 
+// =========================================================================
+// FUNCIONES AUXILIARES DEVICE
+// =========================================================================
+
 //Funciones propias para GPU porque std::max y std::min a veces dan problemas en CUDA
 __device__ int saca_max(int a, int b) {
     return (a > b) ? a : b;
@@ -92,7 +96,7 @@ __global__ void reduccion_vecinos_min(const int* array_datos, int total_vuelos, 
 }
 
 // ==========================================
-// 3.3 INTERMEDIA (Optimizaci�n Par/Impar)
+// 3.3 INTERMEDIA (Optimizaci�n Par/Impar)
 // ==========================================
 
 __global__ void reduccion_pares_max(const int* array_datos, int total_vuelos, int* resultado_final) {
@@ -156,7 +160,7 @@ __global__ void reduccion_pares_min(const int* array_datos, int total_vuelos, in
 }
 
 // ==============================================
-// 3.4 PATRON DE REDUCCION (El �rbol)
+// 3.4 PATRON DE REDUCCION (El �rbol)
 // ==============================================
 
 __global__ void reduccion_arbol_max(const int* entrada, int total_vuelos, int* salida_bloque) {
@@ -456,22 +460,34 @@ void lanzar_fase3(const DatosVuelos& datos) {
 
     cudaFree(d_datos_gpu);
 
+    // =========================================================================
+    // PREPARACIÓN DEL REGISTRO CLOUD
+    // =========================================================================
+
     RegistroCloud registro;
     registro.fase = "Fase 3";
     registro.fecha = obtener_fecha_actual();
     registro.parametros = std::string("columna=") + etiqueta_columna +
         ",operacion=" + (es_maximo ? "MAX" : "MIN");
 
+    // Conversión de los resultados a texto.
+    // Si alguna variante falla, se almacena "PETO" como indicador de error.
     std::string r1 = paso_1 ? std::to_string(final_1) : "PETO";
     std::string r2 = paso_2 ? std::to_string(final_2) : "PETO";
     std::string r3 = paso_3 ? std::to_string(final_3) : "PETO";
     std::string r4 = paso_4 ? std::to_string(final_4) : "PETO";
 
+
+    // Empaquetado de los resultados de las cuatro variantes en un único registro
     registro.resultado = "v1=" + r1 +
         ",v2=" + r2 +
         ",v3=" + r3 +
         ",v4=" + r4;
 
+    
+    // =========================================================================
+    // MÓDULO CLOUD: Interacción y envío de peticiones
+    // =========================================================================    
     if (preguntar_subida_cloud()) {
         registro.usuario = pedir_usuario_cloud();
 
@@ -481,6 +497,8 @@ void lanzar_fase3(const DatosVuelos& datos) {
             std::cout << "\nResultado enviado correctamente al cloud.\n";
         }
         else {
+            // Si falla la conexión con el Cloud, no se pierde el resultado.
+            // Se muestra localmente como mecanismo de contingencia.
             std::cout << "\nNo se pudo enviar al cloud. Se muestra el registro localmente:\n";
             mostrar_registro_cloud(registro);
         }

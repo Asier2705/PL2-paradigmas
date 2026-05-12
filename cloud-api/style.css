@@ -1,7 +1,17 @@
+/* =========================================================================
+   CONFIGURACIÓN GLOBAL
+   ========================================================================= */
+
+/* Se aplica a todos los elementos de la página.
+   border-box hace que el padding y el borde formen parte del ancho total,
+   evitando problemas de cálculo en los tamaños. */
 * {
     box-sizing: border-box;
 }
 
+/* Estilos generales del cuerpo de la página:
+   se elimina el margen por defecto, se define la fuente principal,
+   el color de fondo y el color base del texto. */
 body {
     margin: 0;
     font-family: "Segoe UI", Arial, sans-serif;
@@ -9,12 +19,21 @@ body {
     color: #1f2937;
 }
 
+/* Contenedor principal del dashboard.
+   Limita el ancho máximo, centra el contenido y añade separación interior. */
 .dashboard-container {
     max-width: 1300px;
     margin: 0 auto;
     padding: 32px 20px 48px;
 }
 
+/* =========================================================================
+   CABECERA PRINCIPAL DEL DASHBOARD
+   ========================================================================= */
+
+/* Bloque superior del panel.
+   Usa flexbox para colocar el texto principal a la izquierda y las estadísticas
+   a la derecha. También aplica fondo blanco, bordes redondeados y sombra. */
 .hero {
     display: flex;
     justify-content: space-between;
@@ -28,6 +47,8 @@ body {
     border: 1px solid #e5e7eb;
 }
 
+/* Texto pequeño situado encima del título.
+   Se usa para indicar el contexto de la práctica. */
 .eyebrow {
     margin: 0 0 8px;
     font-size: 13px;
@@ -37,24 +58,30 @@ body {
     color: #2563eb;
 }
 
+/* Título principal del dashboard. */
 .hero h1 {
     margin: 0 0 10px;
     font-size: 32px;
     line-height: 1.15;
 }
 
+/* Subtítulo descriptivo debajo del título principal. */
 .hero-subtitle {
     margin: 0;
     color: #6b7280;
     font-size: 15px;
 }
 
+/* Contenedor de las tarjetas de estadísticas.
+   Se colocan en fila y pueden saltar de línea si no hay espacio suficiente. */
 .hero-stats {
     display: flex;
     gap: 14px;
     flex-wrap: wrap;
 }
 
+/* Tarjeta individual de estadística.
+   Se usa para mostrar datos como registros visibles o última actualización. */
 .stat-card {
     min-width: 180px;
     padding: 16px 18px;
@@ -63,6 +90,7 @@ body {
     border-radius: 16px;
 }
 
+/* Etiqueta descriptiva pequeña dentro de cada tarjeta de estadística. */
 .stat-label {
     display: block;
     margin-bottom: 8px;
@@ -72,17 +100,26 @@ body {
     letter-spacing: 0.06em;
 }
 
+/* Valor principal de cada tarjeta de estadística. */
 .stat-value {
     font-size: 24px;
     font-weight: 700;
     color: #111827;
 }
 
+/* Ajuste específico para la tarjeta de fecha,
+   ya que una fecha completa necesita un tamaño menor. */
 .stat-date {
     font-size: 14px;
     font-weight: 600;
 }
 
+/* =========================================================================
+   CONTROLES DE BÚSQUEDA Y FILTRADO
+   ========================================================================= */
+
+/* Contenedor de los controles.
+   Agrupa el buscador, el selector de fase y el botón de recarga. */
 .controls {
     display: flex;
     justify-content: space-between;
@@ -96,16 +133,22 @@ body {
     border: 1px solid #e5e7eb;
 }
 
+/* Grupo del buscador.
+   Ocupa el espacio disponible y tiene un ancho base amplio. */
 .search-group {
     flex: 1 1 420px;
 }
 
+/* Grupo del selector y el botón de recarga.
+   Se colocan en fila con separación entre ellos. */
 .filter-group {
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
 }
 
+/* Estilos compartidos del buscador y del selector.
+   Se define el tamaño, borde, radio, fondo y transición al enfocar. */
 .search-box,
 .filter-select {
     width: 100%;
@@ -119,16 +162,21 @@ body {
     transition: 0.2s ease;
 }
 
+/* Ancho mínimo del selector de fase. */
 .filter-select {
     min-width: 180px;
 }
 
-    .search-box:focus,
-    .filter-select:focus {
-        border-color: #2563eb;
-        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
-    }
+/* Estado de foco del buscador y del selector.
+   Al hacer clic, se resalta el borde y se añade una sombra azul suave. */
+.search-box:focus,
+.filter-select:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
 
+/* Botón de recarga de datos.
+   Tiene fondo azul, texto blanco y aspecto destacado. */
 .refresh-button {
     min-height: 46px;
     padding: 0 18px;
@@ -141,10 +189,17 @@ body {
     transition: 0.2s ease;
 }
 
-    .refresh-button:hover {
-        background: #1d4ed8;
-    }
+/* Cambio visual del botón al pasar el ratón por encima. */
+.refresh-button:hover {
+    background: #1d4ed8;
+}
 
+/* =========================================================================
+   MENSAJES DE ESTADO
+   ========================================================================= */
+
+/* Estilo base del mensaje de estado.
+   Se usa para mostrar carga, éxito o error. */
 .status-message {
     margin-bottom: 16px;
     padding: 14px 16px;
@@ -153,24 +208,33 @@ body {
     font-weight: 600;
 }
 
-    .status-message.loading {
-        background: #eff6ff;
-        color: #1d4ed8;
-        border: 1px solid #bfdbfe;
-    }
+/* Estado de carga o espera. */
+.status-message.loading {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
 
-    .status-message.success {
-        background: #ecfdf5;
-        color: #047857;
-        border: 1px solid #a7f3d0;
-    }
+/* Estado de carga correcta de datos. */
+.status-message.success {
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+}
 
-    .status-message.error {
-        background: #fef2f2;
-        color: #b91c1c;
-        border: 1px solid #fecaca;
-    }
+/* Estado de error al cargar los datos. */
+.status-message.error {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
 
+/* =========================================================================
+   TARJETA Y TABLA DE RESULTADOS
+   ========================================================================= */
+
+/* Tarjeta contenedora de la tabla.
+   Aplica fondo blanco, bordes redondeados, sombra y oculta desbordamientos. */
 .table-card {
     background: #ffffff;
     border-radius: 20px;
@@ -179,21 +243,29 @@ body {
     overflow: hidden;
 }
 
+/* Contenedor de la tabla.
+   Permite desplazamiento horizontal si la pantalla es pequeña. */
 .table-wrapper {
     overflow-x: auto;
 }
 
+/* Tabla principal de resultados.
+   Ocupa todo el ancho disponible y mantiene un ancho mínimo para no comprimir
+   demasiado las columnas. */
 table {
     width: 100%;
     border-collapse: collapse;
     min-width: 980px;
 }
 
+/* Cabecera de la tabla con fondo oscuro y texto blanco. */
 thead {
     background: #111827;
     color: #ffffff;
 }
 
+/* Celdas de cabecera.
+   Se usa texto en mayúsculas y espaciado entre letras para mejorar la lectura. */
 th {
     text-align: left;
     padding: 16px 18px;
@@ -202,6 +274,8 @@ th {
     text-transform: uppercase;
 }
 
+/* Celdas normales de la tabla.
+   Se añade padding, borde inferior y alineación vertical superior. */
 td {
     padding: 16px 18px;
     border-bottom: 1px solid #e5e7eb;
@@ -209,24 +283,37 @@ td {
     font-size: 14px;
 }
 
+/* Efecto visual al pasar el ratón sobre una fila. */
 tbody tr:hover {
     background: #f9fafb;
 }
 
+/* Resalta el nombre de usuario dentro de la celda correspondiente. */
 .usuario-cell strong {
     color: #111827;
 }
 
+/* Celda de fecha.
+   Se usa color gris y white-space nowrap para evitar que la fecha se parta
+   en varias líneas. */
 .fecha-cell {
     color: #6b7280;
     white-space: nowrap;
 }
 
+/* Celda del resultado.
+   Se destaca ligeramente con mayor peso de fuente. */
 .resultado-cell {
     font-weight: 600;
     color: #111827;
 }
 
+/* =========================================================================
+   FORMATO DE PARÁMETROS Y ETIQUETAS DE FASE
+   ========================================================================= */
+
+/* Formato de los parámetros dentro de la tabla.
+   Se muestran como una pequeña caja de código. */
 code {
     display: inline-block;
     padding: 6px 10px;
@@ -238,6 +325,8 @@ code {
     word-break: break-word;
 }
 
+/* Estilo base de las etiquetas o badges de fase.
+   Se muestran como pequeñas cápsulas redondeadas. */
 .badge {
     display: inline-flex;
     align-items: center;
@@ -248,31 +337,37 @@ code {
     letter-spacing: 0.03em;
 }
 
+/* Color específico para Fase 1. */
 .fase-1 {
     background: #dbeafe;
     color: #1d4ed8;
 }
 
+/* Color específico para Fase 2. */
 .fase-2 {
     background: #dcfce7;
     color: #15803d;
 }
 
+/* Color específico para Fase 3. */
 .fase-3 {
     background: #ede9fe;
     color: #6d28d9;
 }
 
+/* Color específico para Fase 4. */
 .fase-4 {
     background: #fef3c7;
     color: #b45309;
 }
 
+/* Color por defecto si la fase no coincide con ninguna conocida. */
 .fase-default {
     background: #e5e7eb;
     color: #374151;
 }
 
+/* Mensaje que aparece dentro de la tabla cuando no hay resultados filtrados. */
 .empty-state {
     text-align: center;
     padding: 28px 16px;
@@ -280,15 +375,23 @@ code {
     font-weight: 600;
 }
 
+/* =========================================================================
+   DISEÑO RESPONSIVE
+   ========================================================================= */
+
+/* Ajustes para pantallas de menos de 900px.
+   La cabecera pasa a colocarse en columna para que no se comprima el contenido. */
 @media (max-width: 900px) {
     .hero {
         flex-direction: column;
     }
 
+    /* Las tarjetas de estadísticas ocupan todo el ancho disponible. */
     .hero-stats {
         width: 100%;
     }
 
+    /* Cada tarjeta puede crecer y adaptarse al espacio disponible. */
     .stat-card {
         flex: 1 1 200px;
     }

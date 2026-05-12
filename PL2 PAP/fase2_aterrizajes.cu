@@ -11,11 +11,15 @@
 
 #define TOPE_MATRICULA 16
 
+// Estructura auxiliar para almacenar temporalmente en memoria Host (CPU)
+// las coincidencias detectadas por la GPU antes de enviarlas al entorno Cloud.
 struct CoincidenciaAterrizaje {
     std::string matricula;
     float arr_delay;
 };
 
+// FunciÃ³n interactiva: permite al usuario decidir cuÃ¡ntas coincidencias quiere
+// subir al Cloud, evitando enviar demasiadas peticiones HTTP innecesarias.
 int pedir_cantidad_subir_fase2(int total_disponibles) {
     int cantidad;
     std::cout << "Hay " << total_disponibles
@@ -28,10 +32,20 @@ int pedir_cantidad_subir_fase2(int total_disponibles) {
     return cantidad;
 }
 
-//Usamos memoria constante porque el umbral no cambia y así todos los hilos del warp lo leen a la vez de la caché de manera rápida
+
+// =========================================================================
+// MEMORIA CONSTANTE CUDA
+// =========================================================================
+
+
+//Usamos memoria constante porque el umbral no cambia y asï¿½ todos los hilos del warp lo leen a la vez de la cachï¿½ de manera rï¿½pida
 __constant__ int umbral_llegada;
 
-//Función auxiliar en la GPU para copiar las matrículas letra a letra
+
+// =========================================================================
+// FUNCIÃ“N AUXILIAR DEVICE: Copia de matrÃ­cula
+// =========================================================================
+//Funciï¿½n auxiliar en la GPU para copiar las matrï¿½culas letra a letra
 __device__ void clonar_matricula(char* destino, const char* origen) {
     for (int i = 0; i < TOPE_MATRICULA; i++) {
         destino[i] = origen[i];
@@ -41,6 +55,10 @@ __device__ void clonar_matricula(char* destino, const char* origen) {
     }
 }
 
+
+// =========================================================================
+// KERNEL CUDA: EvaluaciÃ³n paralela del umbral de aterrizaje
+// =========================================================================
 //Kernel principal de la Fase 2
 __global__ void buscar_aterrizajes_gpu(
     const float* array_llegadas,
@@ -50,7 +68,7 @@ __global__ void buscar_aterrizajes_gpu(
     char* matriculas_pilladas,
     float* tiempos_pillados
 ) {
-    //Calculamos qué vuelo le toca a este hilo
+    //Calculamos quï¿½ vuelo le toca a este hilo
     int id_hilo = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (id_hilo >= total_vuelos) {
@@ -59,7 +77,7 @@ __global__ void buscar_aterrizajes_gpu(
 
     float minutos = array_llegadas[id_hilo];
 
-    //Saltamos los huecos vacíos del CSV
+    //Saltamos los huecos vacï¿½os del CSV
     if (isnan(minutos)) {
         return;
     }
@@ -73,11 +91,11 @@ __global__ void buscar_aterrizajes_gpu(
     }
 
     if (pillado) {
-        //Usamos atomicAdd para poner en fila a los hilos ya que si no podrían pisarse al intentar sumar al contador a la vez
-        //"pos" será el índice único donde este hilo guardará su avión
+        //Usamos atomicAdd para poner en fila a los hilos ya que si no podrï¿½an pisarse al intentar sumar al contador a la vez
+        //"pos" serï¿½ el ï¿½ndice ï¿½nico donde este hilo guardarï¿½ su aviï¿½n
         int pos = atomicAdd(contador_excesos, 1);
 
-        //Calculamos los punteros basándonos en nuestra posición única
+        //Calculamos los punteros basï¿½ndonos en nuestra posiciï¿½n ï¿½nica
         const char* mi_matricula_origen = &array_matriculas[id_hilo * TOPE_MATRICULA];
         char* mi_matricula_destino = &matriculas_pilladas[pos * TOPE_MATRICULA];
 
@@ -91,7 +109,7 @@ __global__ void buscar_aterrizajes_gpu(
 
 void lanzar_fase2(const DatosVuelos& datos) {
     if (datos.num_filas == 0) {
-        std::cout << "Primero hay que cargar un CSV válido.\n";
+        std::cout << "Primero hay que cargar un CSV vï¿½lido.\n";
         return;
     }
 
@@ -102,7 +120,7 @@ void lanzar_fase2(const DatosVuelos& datos) {
 
     int total = static_cast<int>(datos.retraso_llegada.size());
 
-    //Aplanamos las matrículas (strings de C++) en un array gigante de chars para que la GPU no colapse
+    //Aplanamos las matrï¿½culas (strings de C++) en un array gigante de chars para que la GPU no colapse
     std::vector<char> matriculas_host(total * TOPE_MATRICULA, '\0');
     for (int i = 0; i < total; i++) {
         std::strncpy(&matriculas_host[i * TOPE_MATRICULA],
@@ -147,7 +165,7 @@ void lanzar_fase2(const DatosVuelos& datos) {
         return;
     }
 
-    // Reservamos salida con tamaño total por si acaso todos los vuelos cumplen la condición
+    // Reservamos salida con tamaï¿½o total por si acaso todos los vuelos cumplen la condiciï¿½n
     error = cudaMalloc((void**)&d_matriculas_salida, total * TOPE_MATRICULA * sizeof(char));
     if (error != cudaSuccess) {
         std::cout << "Fallo al reservar memoria para matriculas de salida.\n";
@@ -167,7 +185,7 @@ void lanzar_fase2(const DatosVuelos& datos) {
         return;
     }
 
-    //Ponemos el contador a 0 en la gráfica
+    //Ponemos el contador a 0 en la grï¿½fica
     int cero = 0;
     cudaMemcpy(d_contador, &cero, sizeof(int), cudaMemcpyHostToDevice);
 
@@ -194,7 +212,7 @@ void lanzar_fase2(const DatosVuelos& datos) {
         return;
     }
 
-    //Calculamos el hardware dinámicamente
+    //Calculamos el hardware dinï¿½micamente
     int hilos_bloque = elegir_hilos_por_bloque();
     int bloques_grid = calcular_num_bloques(total, hilos_bloque);
 
@@ -216,7 +234,7 @@ void lanzar_fase2(const DatosVuelos& datos) {
             << cudaGetErrorString(error) << "\n";
     }
 
-    //Nos traemos cuántos aviones han entrado finalmente en el umbral
+    //Nos traemos cuï¿½ntos aviones han entrado finalmente en el umbral
     int total_detectados = 0;
     cudaMemcpy(&total_detectados, d_contador, sizeof(int), cudaMemcpyDeviceToHost);
 
@@ -226,7 +244,7 @@ void lanzar_fase2(const DatosVuelos& datos) {
     std::vector<CoincidenciaAterrizaje> coincidencias_detectadas;
     coincidencias_detectadas.reserve(total_detectados);
 
-    //Si ha cogido a alguno, nos bajamos los resultados para enseñarlos
+    //Si ha cogido a alguno, nos bajamos los resultados para enseï¿½arlos
     if (total_detectados > 0) {
         std::vector<char> matriculas_salida_host(total_detectados * TOPE_MATRICULA, '\0');
         std::vector<float> tiempos_salida_host(total_detectados);
@@ -251,7 +269,7 @@ void lanzar_fase2(const DatosVuelos& datos) {
             coincidencias_detectadas.push_back(c);
         }
 
-        //Imprimimos un máximo de 10 para no colapsar la consola
+        //Imprimimos un mï¿½ximo de 10 para no colapsar la consola
         int mostrar = (total_detectados < 10) ? total_detectados : 10;
 
         for (int i = 0; i < mostrar; i++) {
@@ -273,6 +291,12 @@ void lanzar_fase2(const DatosVuelos& datos) {
         return;
     }
 
+
+    // =========================================================================
+    // MÃ“DULO CLOUD: InteracciÃ³n y envÃ­o de peticiones
+    // =========================================================================
+
+
     if (preguntar_subida_cloud()) {
         std::string usuario = pedir_usuario_cloud();
         int cantidad_subir = pedir_cantidad_subir_fase2(total_detectados);
@@ -285,6 +309,9 @@ void lanzar_fase2(const DatosVuelos& datos) {
             registro.fase = "Fase 2";
             registro.fecha = obtener_fecha_actual();
             registro.parametros = "umbral=" + std::to_string(limite);
+            
+            // Empaquetado de los metadatos relevantes de cada coincidencia
+            // detectada durante la ejecuciÃ³n de la Fase 2.
             registro.resultado =
                 "coincidencia=" + std::to_string(i + 1) + "/" + std::to_string(total_detectados) +
                 ",TAIL_NUM=" + coincidencias_detectadas[i].matricula +
@@ -296,6 +323,8 @@ void lanzar_fase2(const DatosVuelos& datos) {
                 enviados_ok++;
             }
             else {
+                // Si falla el envÃ­o al Cloud, no se aborta el programa.
+                // Se muestra el registro localmente como mecanismo de contingencia.
                 std::cout << "\nNo se pudo enviar esta coincidencia al cloud. Se muestra el registro localmente:\n";
                 mostrar_registro_cloud(registro);
             }

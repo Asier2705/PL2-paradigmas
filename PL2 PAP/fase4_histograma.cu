@@ -10,12 +10,20 @@
 #include "info_gpu.h"
 #include "cloud_envio.h"
 
-//Estructura auxiliar para agrupar y ordenar los resultados finales
+// =========================================================================
+// ESTRUCTURA AUXILIAR PARA RESULTADOS DEL HISTOGRAMA
+// =========================================================================
+
+// Estructura auxiliar para almacenar cada aeropuerto que supera el umbral.
+// Guarda el índice denso interno usado por la GPU y el número de ocurrencias
+// detectadas en el histograma.
 struct ResultadoHistograma {
     int indice;
     int ocurrencias;
 };
 
+// Función interactiva: permite al usuario decidir cuántos resultados quiere
+// subir al Cloud, evitando enviar demasiadas peticiones HTTP innecesarias.
 int pedir_cantidad_subir_fase4(int total_disponibles) {
     int cantidad;
     std::cout << "Hay " << total_disponibles
@@ -28,13 +36,24 @@ int pedir_cantidad_subir_fase4(int total_disponibles) {
     return cantidad;
 }
 
-//Calculo del histograma usando unicamente la memoria global como mecanismo de seguridad
+
+// =========================================================================
+// KERNEL CUDA: Histograma usando memoria global
+// =========================================================================
+
+// Kernel que calcula el histograma usando únicamente memoria global.
+// Cada hilo recorre parte del array de categorías y actualiza el contador
+// correspondiente mediante atomicAdd.
 __global__ void calcular_histograma_global(
     const int* array_categorias,
     int total_elementos,
     int* histograma_salida
 ) {
+    // Identificador global del hilo dentro de un Grid 1D
     int id_hilo = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // Salto total entre iteraciones para que todos los hilos puedan recorrer
+    // el array completo en caso de que haya más elementos que hilos.
     int salto = blockDim.x * gridDim.x;
 
     for (int i = id_hilo; i < total_elementos; i += salto) {
@@ -44,6 +63,10 @@ __global__ void calcular_histograma_global(
         }
     }
 }
+
+// =========================================================================
+// KERNEL CUDA: Histograma optimizado con memoria compartida
+// =========================================================================
 
 //Calculo del histograma optimizado mediante el uso de memoria compartida
 __global__ void calcular_histograma_compartido(
@@ -81,6 +104,10 @@ __global__ void calcular_histograma_compartido(
     }
 }
 
+// =========================================================================
+// FUNCIÓN PRINCIPAL DE FASE 4 (Host)
+// =========================================================================
+
 void lanzar_fase4(const DatosVuelos& datos) {
     if (datos.num_filas == 0) {
         std::cout << "No hay datos cargados en el sistema\n";
@@ -89,6 +116,10 @@ void lanzar_fase4(const DatosVuelos& datos) {
 
     int opcion_tipo;
     int umbral_minimo;
+
+    // =========================================================================
+    // MENÚ INTERACTIVO
+    // =========================================================================
 
     std::cout << "\n--- FASE 4: HISTOGRAMA DE AEROPUERTOS ---\n";
     std::cout << "Seleccione la clasificacion del aeropuerto:\n";
@@ -103,6 +134,10 @@ void lanzar_fase4(const DatosVuelos& datos) {
     const std::vector<int>* ids_base = nullptr;
     const std::vector<std::string>* codigos_base = nullptr;
     const char* etiqueta_tipo = "";
+
+    // =========================================================================
+    // SELECCIÓN DEL CONJUNTO DE DATOS
+    // =========================================================================
 
     if (opcion_tipo == 1) {
         ids_base = &datos.id_aeropuerto_origen;
@@ -120,6 +155,10 @@ void lanzar_fase4(const DatosVuelos& datos) {
     }
 
     int total_registros = static_cast<int>(ids_base->size());
+
+    // =========================================================================
+    // PREPROCESADO HOST: Compresión de IDs reales a índices densos
+    // =========================================================================
 
     std::unordered_map<int, int> mapa_id_a_denso;
     std::unordered_map<int, std::string> mapa_id_a_codigo;
@@ -156,6 +195,10 @@ void lanzar_fase4(const DatosVuelos& datos) {
         return;
     }
 
+    // =========================================================================
+    // CONSTRUCCIÓN DEL ARRAY DE CATEGORÍAS DENSAS
+    // =========================================================================
+
     std::vector<int> vector_categorias_densas(total_registros, -1);
 
     for (int i = 0; i < total_registros; i++) {
@@ -168,6 +211,10 @@ void lanzar_fase4(const DatosVuelos& datos) {
             vector_categorias_densas[i] = mapa_id_a_denso[id_real];
         }
     }
+
+    // =========================================================================
+    // RESERVA DE MEMORIA EN DEVICE
+    // =========================================================================
 
     int* d_array_categorias = nullptr;
     int* d_array_histograma = nullptr;
@@ -186,6 +233,10 @@ void lanzar_fase4(const DatosVuelos& datos) {
         return;
     }
 
+
+    // =========================================================================
+    // TRANSFERENCIAS HOST-TO-DEVICE
+    // =========================================================================
     estado_memoria = cudaMemcpy(d_array_categorias, vector_categorias_densas.data(), total_registros * sizeof(int), cudaMemcpyHostToDevice);
     if (estado_memoria != cudaSuccess) {
         std::cout << "Error durante la transferencia de categorias a la GPU: " << cudaGetErrorString(estado_memoria) << "\n";
@@ -202,6 +253,11 @@ void lanzar_fase4(const DatosVuelos& datos) {
         return;
     }
 
+
+    // =========================================================================
+    // CONFIGURACIÓN DE EJECUCIÓN CUDA
+    // =========================================================================
+
     int hilos_bloque = elegir_hilos_por_bloque();
     int bloques_grid = calcular_num_bloques(total_registros, hilos_bloque);
 
@@ -215,6 +271,9 @@ void lanzar_fase4(const DatosVuelos& datos) {
     std::cout << "Categorias unicas extraidas: " << total_categorias << "\n";
     std::cout << "Configuracion de lanzamiento: " << bloques_grid << " bloques y " << hilos_bloque << " hilos/bloque\n";
 
+    // =========================================================================
+    // LANZAMIENTO DEL KERNEL
+    // =========================================================================
     if (capacidad_suficiente) {
         std::cout << "Modo operativo: Memoria compartida activada\n";
         calcular_histograma_compartido << <bloques_grid, hilos_bloque, memoria_dinamica_requerida >> > (
@@ -241,6 +300,9 @@ void lanzar_fase4(const DatosVuelos& datos) {
         return;
     }
 
+    // =========================================================================
+    // RECUPERACIÓN DEL HISTOGRAMA DEVICE-TO-HOST
+    // =========================================================================
     std::vector<int> histograma_final_cpu(total_categorias);
     estado_memoria = cudaMemcpy(histograma_final_cpu.data(), d_array_histograma, total_categorias * sizeof(int), cudaMemcpyDeviceToHost);
     if (estado_memoria != cudaSuccess) {
@@ -249,6 +311,11 @@ void lanzar_fase4(const DatosVuelos& datos) {
         cudaFree(d_array_histograma);
         return;
     }
+
+
+    // =========================================================================
+    // FILTRADO Y ORDENACIÓN DE RESULTADOS EN CPU
+    // =========================================================================
 
     std::vector<ResultadoHistograma> coleccion_filtrada;
     coleccion_filtrada.reserve(total_categorias);
@@ -270,6 +337,9 @@ void lanzar_fase4(const DatosVuelos& datos) {
         }
     );
 
+    // =========================================================================
+    // IMPRESIÓN DE RESULTADOS
+    // =========================================================================
     std::cout << "\nResultados consolidados de la Fase 4:\n";
     std::cout << "Total de aeropuertos clasificados: " << total_categorias << "\n";
     std::cout << "Aeropuertos que superan el umbral establecido: " << coleccion_filtrada.size() << "\n\n";
@@ -299,6 +369,10 @@ void lanzar_fase4(const DatosVuelos& datos) {
         }
     }
 
+    // =========================================================================
+    // LIBERACIÓN DE RECURSOS GPU
+    // =========================================================================
+
     //Liberacion segura de las reservas en la VRAM
     cudaFree(d_array_categorias);
     cudaFree(d_array_histograma);
@@ -307,6 +381,10 @@ void lanzar_fase4(const DatosVuelos& datos) {
         std::cout << "No hay resultados para subir al cloud.\n";
         return;
     }
+
+    // =========================================================================
+    // MÓDULO CLOUD: Interacción y envío de peticiones
+    // =========================================================================
 
     if (preguntar_subida_cloud()) {
         std::string usuario = pedir_usuario_cloud();
@@ -322,8 +400,14 @@ void lanzar_fase4(const DatosVuelos& datos) {
             registro.usuario = usuario;
             registro.fase = "Fase 4";
             registro.fecha = obtener_fecha_actual();
+
+            // Parámetros generales de la ejecución
             registro.parametros = std::string("tipo=") + etiqueta_tipo +
                 ",umbral=" + std::to_string(umbral_minimo);
+
+            // Empaquetado del resultado concreto que se va a subir al Cloud.
+            // Se incluye la posición en el ranking, el código del aeropuerto
+            // y el número de ocurrencias detectadas.
             registro.resultado =
                 "top=" + std::to_string(i + 1) + "/" + std::to_string(coleccion_filtrada.size()) +
                 ",aeropuerto=" + codigo_str +
@@ -335,6 +419,8 @@ void lanzar_fase4(const DatosVuelos& datos) {
                 enviados_ok++;
             }
             else {
+                // Si falla el envío al Cloud, no se pierde el resultado.
+                // Se muestra localmente como mecanismo de contingencia.
                 std::cout << "\nNo se pudo enviar este aeropuerto al cloud. Se muestra el registro localmente:\n";
                 mostrar_registro_cloud(registro);
             }
